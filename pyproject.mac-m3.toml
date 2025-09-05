@@ -1,7 +1,7 @@
 [project]
 name = "bablify"
 version = "0.1.0"
-description = "Multilingual AI Avatar Chat System - A fork of OpenAvatarChat with WebRTC fixes and international support"
+description = "Multilingual AI Avatar Chat System optimized for Mac M3 Max - A fork of OpenAvatarChat with WebRTC fixes"
 readme = "README.md"
 requires-python = ">=3.11.7, <3.12"
 dependencies = [
@@ -17,21 +17,24 @@ dependencies = [
     "numpy<=1.26.4",
     "openai>=1.72.0",
     "opencv-python-headless~=4.11.0",
-    "pip>=25.0.1",
+    "pip>=23.0.0",
     "pyaml>=25.1.0",
     "pydantic~=2.10.6",
     "pyyaml~=6.0.2",
     "scipy~=1.15.1",
-    "setuptools>=78.1.0",
+    "setuptools>=65.0.0",
     "soundfile~=0.13.1",
     "starlette~=0.41.3",
     "tqdm~=4.67.1",
     "typing-extensions~=4.12.2",
     "uvicorn~=0.34.0",
     "torch==2.4.1",
-    "torchvision",
-    "torchaudio",
+    "torchvision==0.19.1",
+    "torchaudio==2.4.1",
     "python-dotenv>=1.1.0",
+    # Mac M3 specific optimizations
+    "accelerate>=0.20.0",
+    "transformers>=4.30.0",
 ]
 
 [tool.uv.workspace]
@@ -49,20 +52,6 @@ members = [
 
 [tool.uv.sources]
 fastrtc = { path = "src/third_party/gradio_webrtc_videochat/dist/fastrtc-0.0.28.dev0-py3-none-any.whl" }
-torch = [
-    { index = "pytorch-cu124" },
-]
-torchvision = [
-    { index = "pytorch-cu124" },
-]
-torchaudio = [
-    { index = "pytorch-cu124" },
-]
-
-[[tool.uv.index]]
-name = "pytorch-cu124"
-url = "https://download.pytorch.org/whl/cu124"
-explicit = true
 
 [tool.uv]
 no-build-isolation-package = ["chumpy"]

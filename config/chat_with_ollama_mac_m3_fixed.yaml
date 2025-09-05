@@ -1,0 +1,83 @@
+default:
+  logger:
+    log_level: "INFO"
+  service:
+    host: "0.0.0.0"
+    port: 8282
+    cert_file: "ssl_certs/localhost.crt"
+    cert_key: "ssl_certs/localhost.key"
+  chat_engine:
+    model_root: "models"
+    concurrent_limit: 1
+    handler_search_path:
+      - "src/handlers"
+    handler_configs:
+      RtcClient:
+        module: client/rtc_client/client_handler_rtc
+        # Fixed WebRTC configuration for localhost
+        connection_ttl: 300
+        enable_ice: true
+        ice_servers:
+          - urls: "stun:stun.l.google.com:19302"
+          - urls: "stun:stun1.l.google.com:19302"
+        # Disable TURN for local testing
+        turn_config: null
+        # Enable debug mode
+        debug: true
+        # Force localhost mode
+        force_relay: false
+        rtc_configuration:
+          iceServers:
+            - urls: "stun:stun.l.google.com:19302"
+          iceCandidatePoolSize: 10
+          iceTransportPolicy: "all"
+          bundlePolicy: "balanced"
+          rtcpMuxPolicy: "require"
+      SileroVad:
+        module: vad/silerovad/vad_handler_silero
+        speaking_threshold: 0.3
+        start_delay: 1024
+        end_delay: 3000
+        buffer_look_back: 3000
+        speech_padding: 256
+        use_cpu: true
+        num_threads: 4
+        # Reduce sensitivity for better local performance
+        model_name: "silero_vad"
+        force_reload: false
+      Edge_TTS:
+        enabled: True
+        module: tts/edgetts/tts_handler_edgetts
+        voice: "en-US-JennyNeural"
+        sample_rate: 24000
+        # Reduced timeout for faster response
+        timeout: 15
+        # Mac M3 optimization
+        use_cache: true
+        cache_size: 100
+      LLMOpenAICompatible:
+        enabled: True
+        module: llm/openai_compatible/llm_handler_openai_compatible
+        model_name: "qwen2.5vl"
+        enable_video_input: True
+        history_length: 15
+        system_prompt: "You are a helpful AI assistant. Keep responses concise and conversational. Respond quickly and directly."
+        api_url: "http://ollama:11434/v1"
+        api_key: "ollama"
+        # Optimized timeouts
+        timeout: 30
+        max_retries: 1
+        temperature: 0.3
+        max_tokens: 1500
+        # Enable streaming for faster response
+        stream: false
+        # Connection settings
+        request_timeout: 45
+        connection_timeout: 5
+        read_timeout: 40
+        # Mac M3 specific
+        enable_parallel_processing: false
+        batch_size: 1
+      LiteAvatar:
+        enabled: False
+        module: avatar/liteavatar/avatar_handler_liteavatar

@@ -1,0 +1,86 @@
+default:
+  logger:
+    log_level: "INFO"
+  service:
+    host: "0.0.0.0"
+    port: 8282
+    cert_file: "ssl_certs/localhost.crt"
+    cert_key: "ssl_certs/localhost.key"
+  chat_engine:
+    model_root: "models"
+    concurrent_limit: 10
+    handler_search_path:
+      - "src/handlers"
+    # WebRTC configuration optimized for localhost
+    turn_config:
+      turn_provider: "turn_server"
+      urls:
+        - "stun:stun.l.google.com:19302"
+      username: ""
+      credential: ""
+      # Force localhost ICE candidates
+      ice_transport_policy: "all"
+      bundle_policy: "balanced"
+      rtcp_mux_policy: "require"
+      # Enable host candidates for localhost
+      enable_dtls_srtp: true
+      enable_rtp_data_channel: false
+    handler_configs:
+      RtcClient:
+        module: client/rtc_client/client_handler_rtc
+        connection_ttl: 300
+        concurrent_limit: 20
+      # Disable VAD to prevent audio processing
+      SileroVad:
+        enabled: False
+        module: vad/silerovad/vad_handler_silero
+      # Disable ASR to prevent speech processing
+      SenseVoice:
+        enabled: False
+        module: asr/sensevoice/asr_handler_sensevoice
+      # Disable TTS to prevent audio output processing
+      Edge_TTS:
+        enabled: False
+        module: tts/edgetts/tts_handler_edgetts
+      # Keep only LLM for text processing
+      LLMOpenAICompatible:
+        enabled: True
+        module: llm/openai_compatible/llm_handler_openai_compatible
+        model_name: "qwen2.5vl"
+        enable_video_input: False
+        history_length: 20
+        system_prompt: "You are a helpful AI assistant. Provide clear, concise text responses. You are communicating via text chat only."
+        api_url: "http://ollama:11434/v1"
+        api_key: "ollama"
+        # Fast response settings
+        timeout: 15
+        max_retries: 1
+        temperature: 0.7
+        max_tokens: 500
+        stream: false
+        # Connection optimization
+        request_timeout: 20
+        connection_timeout: 3
+        read_timeout: 15
+        # Performance settings
+        enable_parallel_processing: false
+        batch_size: 1
+        # Text-only mode
+        text_only_mode: true
+        skip_audio_processing: true
+        skip_video_processing: true
+      # Disable all avatar/video handlers
+      LiteAvatar:
+        enabled: False
+        module: avatar/liteavatar/avatar_handler_liteavatar
+      MuseTalk:
+        enabled: False
+      AvatarMuseTalk:
+        enabled: False
+      MiniCPMAvatar:
+        enabled: False
+      # Disable any other audio/video handlers
+      CosyVoice:
+        enabled: False
+      MiniCPM:
+        enabled: False

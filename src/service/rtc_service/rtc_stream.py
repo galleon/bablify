@@ -16,10 +16,46 @@ from chat_engine.data_models.chat_data_type import ChatDataType
 from chat_engine.data_models.chat_signal import ChatSignal
 from chat_engine.data_models.chat_signal_type import ChatSignalType, ChatSignalSourceType
 from engine_utils.interval_counter import IntervalCounter
-from aiortc.codecs import vpx 
+from aiortc.codecs import vpx
 vpx.DEFAULT_BITRATE = 5000000
 vpx.MIN_BITRATE = 1000000
 vpx.MAX_BITRATE = 10000000
+
+
+def safe_channel_send(channel, message_data, message_type="message"):
+    """
+    Safely send message through DataChannel with proper state checking.
+
+    Args:
+        channel: The DataChannel object
+        message_data: The data to send (will be JSON stringified if not already string)
+        message_type: Type description for logging purposes
+
+    Returns:
+        bool: True if message was sent successfully, False otherwise
+    """
+    if not channel:
+        logger.warning(f"Cannot send {message_type}: channel is None")
+        return False
+
+    if not hasattr(channel, 'readyState'):
+        logger.warning(f"Cannot send {message_type}: channel has no readyState attribute")
+        return False
+
+    if channel.readyState != 'open':
+        logger.warning(f"Cannot send {message_type}: channel state is '{channel.readyState}', expected 'open'")
+        return False
+
+    try:
+        if isinstance(message_data, str):
+            channel.send(message_data)
+        else:
+            channel.send(json.dumps(message_data))
+        logger.debug(f"Successfully sent {message_type}")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to send {message_type}: {e}")
+        return False
 
 
 class RtcStream(AsyncAudioVideoStreamHandler):
@@ -163,7 +199,7 @@ class RtcStream(AsyncAudioVideoStreamHandler):
     def set_channel(self, channel):
             super().set_channel(channel)
             self.chat_channel = channel
-            
+
             async def process_chat_history():
                 role = None
                 chat_id = None
@@ -175,10 +211,14 @@ class RtcStream(AsyncAudioVideoStreamHandler):
                     current_role = 'human' if chat_data.type == ChatDataType.HUMAN_TEXT else 'avatar'
                     chat_id = uuid.uuid4().hex if current_role != role else chat_id
                     role = current_role
-                    self.chat_channel.send(json.dumps({'type': 'chat', 'message': chat_data.data.get_main_data(), 
-                                                        'id': chat_id, 'role': current_role}))  
+                    safe_channel_send(self.chat_channel, {
+                        'type': 'chat',
+                        'message': chat_data.data.get_main_data(),
+                        'id': chat_id,
+                        'role': current_role
+                    }, "chat history message")
             asyncio.create_task(process_chat_history())
-                
+
             @channel.on("message")
             def _(message):
                 logger.info(f"Received message Custom: {message}")
@@ -194,7 +234,7 @@ class RtcStream(AsyncAudioVideoStreamHandler):
                 if timestamp[0] / timestamp[1] < self.stream_start_delay:
                     return
                 logger.info(f'on_chat_datachannel: {message}')
-    
+
                 if message['type'] == 'stop_chat':
                     self.client_session_delegate.emit_signal(
                         ChatSignal(
@@ -204,10 +244,12 @@ class RtcStream(AsyncAudioVideoStreamHandler):
                         )
                     )
                 elif message['type'] == 'chat':
-                    channel.send(json.dumps({'type': 'avatar_end'}))
-                    if self.client_session_delegate.shared_states.enable_vad is False:
-                        return
-                    self.client_session_delegate.shared_states.enable_vad = False
+                    safe_channel_send(channel, {'type': 'avatar_end'}, "avatar_end message")
+                    # For DataChannel text messages, don't disable VAD to allow continuous chat
+                    # VAD is for voice activity detection and doesn't interfere with text messages
+                    # if self.client_session_delegate.shared_states.enable_vad is False:
+                    #     return
+                    # self.client_session_delegate.shared_states.enable_vad = False
                     self.client_session_delegate.emit_signal(
                         ChatSignal(
                             # begin a new round of responding
@@ -225,7 +267,7 @@ class RtcStream(AsyncAudioVideoStreamHandler):
                 # else:
 
                 # channel.send(json.dumps({"type": "chat", "unique_id": unique_id, "message": message}))
-          
+
     async def on_chat_datachannel(self, message: Dict, channel):
         # {"type":"chat",id:"标识属于同一段话", "message":"Hello, world!"}
         # unique_id = uuid.uuid4().hex

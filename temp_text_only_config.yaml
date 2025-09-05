@@ -1,0 +1,25 @@
+default:
+  logger:
+    log_level: "INFO"
+  service:
+    host: "0.0.0.0"
+    port: 8282
+    cert_file: "ssl_certs/localhost.crt"
+    cert_key: "ssl_certs/localhost.key"
+  chat_engine:
+    model_root: "models"
+    concurrent_limit: 1
+    handler_search_path:
+      - "src/handlers"
+    handler_configs:
+      RtcClient:
+        module: client/rtc_client/client_handler_rtc
+      LLMOpenAICompatible:
+        enabled: True
+        module: llm/openai_compatible/llm_handler_openai_compatible
+        model_name: "gpt-3.5-turbo"
+        enable_video_input: False
+        history_length: 20
+        system_prompt: "You are an AI assistant. Respond with 'Hello! I am working correctly.' to test messages."
+        api_url: "https://api.openai.com/v1"
+        api_key: "" # Set your OpenAI API key here or via environment variable OPENAI_API_KEY

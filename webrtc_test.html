@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebRTC SDP Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+        button { padding: 10px 20px; margin: 10px 0; }
+        textarea { width: 100%; height: 200px; }
+    </style>
+</head>
+<body>
+    <h1>OpenAvatarChat WebRTC SDP Debugging</h1>
+
+    <div id="status"></div>
+
+    <button onclick="testWebRTC()">Test WebRTC Connection</button>
+    <button onclick="testConfig()">Test Configuration</button>
+    <button onclick="testMicrophone()">Test Microphone</button>
+
+    <h3>Debug Information:</h3>
+    <textarea id="debug" readonly></textarea>
+
+    <script>
+        const debug = document.getElementById('debug');
+        const status = document.getElementById('status');
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            debug.value += `[${timestamp}] ${message}\n`;
+            debug.scrollTop = debug.scrollHeight;
+
+            status.innerHTML = `<div class="${type}">${message}</div>`;
+            console.log(message);
+        }
+
+        async function testConfig() {
+            try {
+                log('Testing configuration endpoint...', 'info');
+                const response = await fetch('/openavatarchat/initconfig');
+                const config = await response.json();
+
+                log(`Configuration loaded: ${JSON.stringify(config, null, 2)}`, 'success');
+
+                if (config.rtc_configuration && config.rtc_configuration.iceServers) {
+                    log(`Found ${config.rtc_configuration.iceServers.length} ICE servers`, 'success');
+                } else {
+                    log('No ICE servers configured', 'error');
+                }
+            } catch (error) {
+                log(`Configuration test failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testMicrophone() {
+            try {
+                log('Testing microphone access...', 'info');
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                log('Microphone access granted', 'success');
+                stream.getTracks().forEach(track => track.stop());
+            } catch (error) {
+                log(`Microphone test failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testWebRTC() {
+            try {
+                log('Starting WebRTC test...', 'info');
+
+                // Get configuration
+                const configResponse = await fetch('/openavatarchat/initconfig');
+                const config = await configResponse.json();
+
+                if (!config.rtc_configuration) {
+                    throw new Error('No RTC configuration available');
+                }
+
+                // Create RTCPeerConnection
+                const pc = new RTCPeerConnection(config.rtc_configuration);
+
+                pc.oniceconnectionstatechange = () => {
+                    log(`ICE connection state: ${pc.iceConnectionState}`,
+                        pc.iceConnectionState === 'connected' ? 'success' : 'info');
+                };
+
+                pc.onconnectionstatechange = () => {
+                    log(`Connection state: ${pc.connectionState}`,
+                        pc.connectionState === 'connected' ? 'success' : 'info');
+                };
+
+                // Get user media
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    audio: true,
+                    video: false
+                });
+
+                stream.getTracks().forEach(track => {
+                    pc.addTrack(track, stream);
+                    log(`Added ${track.kind} track`, 'info');
+                });
+
+                // Create offer
+                const offer = await pc.createOffer();
+                await pc.setLocalDescription(offer);
+
+                log('Created SDP offer', 'info');
+                log(`SDP type: ${offer.type}`, 'info');
+
+                // Send offer to server
+                const webrtc_id = `test-${Date.now()}`;
+                const offerResponse = await fetch('/webrtc/offer', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        webrtc_id: webrtc_id,
+                        sdp: offer.sdp,
+                        type: offer.type
+                    })
+                });
+
+                if (!offerResponse.ok) {
+                    throw new Error(`Offer failed: ${offerResponse.status} ${offerResponse.statusText}`);
+                }
+
+                const answer = await offerResponse.json();
+                log('Received SDP answer from server', 'success');
+
+                // Set remote description
+                await pc.setRemoteDescription(new RTCSessionDescription({
+                    type: answer.type,
+                    sdp: answer.sdp
+                }));
+
+                log('WebRTC negotiation completed successfully!', 'success');
+
+                // Clean up
+                setTimeout(() => {
+                    stream.getTracks().forEach(track => track.stop());
+                    pc.close();
+                    log('WebRTC connection closed', 'info');
+                }, 5000);
+
+            } catch (error) {
+                log(`WebRTC test failed: ${error.message}`, 'error');
+                log(`Error stack: ${error.stack}`, 'error');
+            }
+        }
+
+        // Auto-run configuration test on load
+        window.onload = () => {
+            log('WebRTC SDP Test Page Loaded', 'info');
+            log(`User Agent: ${navigator.userAgent}`, 'info');
+            testConfig();
+        };
+    </script>
+</body>
+</html>

@@ -1,0 +1,103 @@
+default:
+  logger:
+    log_level: "INFO"
+  service:
+    host: "0.0.0.0"
+    port: 8282
+    cert_file: "ssl_certs/localhost.crt"
+    cert_key: "ssl_certs/localhost.key"
+  chat_engine:
+    model_root: "models"
+    concurrent_limit: 1
+    handler_search_path:
+      - "src/handlers"
+    # WebRTC configuration for audio communication
+    turn_config:
+      turn_provider: "turn_server"
+      urls:
+        - "stun:stun.l.google.com:19302"
+        - "stun:stun1.l.google.com:19302"
+      username: ""
+      credential: ""
+    handler_configs:
+      RtcClient:
+        module: client/rtc_client/client_handler_rtc
+        connection_ttl: 600
+        concurrent_limit: 1
+        # Enable audio but disable video
+        enable_audio: true
+        enable_video: false
+        # WebRTC data channel for text messages
+        enable_datachannel: true
+        # Audio settings optimized for Mac M3
+        audio_sample_rate: 16000
+        audio_channels: 1
+        audio_frame_size: 1024
+      SileroVad:
+        enabled: True
+        module: vad/silerovad/vad_handler_silero
+        # Optimized VAD settings for real-time conversation
+        speaking_threshold: 0.4
+        start_delay: 1500
+        end_delay: 3000
+        buffer_look_back: 3000
+        speech_padding: 512
+        use_cpu: true
+        num_threads: 2
+        # Mac M3 optimizations
+        device: "cpu"
+        model_name: "silero_vad"
+        sample_rate: 16000
+        chunk_size: 512
+        force_reload: false
+      Edge_TTS:
+        enabled: True
+        module: tts/edgetts/tts_handler_edgetts
+        # TTS voice optimized for natural conversation
+        voice: "en-US-JennyNeural"
+        sample_rate: 16000
+        # Audio quality settings
+        rate: "+0%"
+        volume: "+0%"
+        pitch: "+0Hz"
+        # Performance optimizations
+        timeout: 20
+        cache_enabled: true
+        max_cache_size: 100
+        # Stream audio in chunks for better real-time performance
+        streaming_enabled: true
+        chunk_size: 1024
+      LLMOpenAICompatible:
+        enabled: True
+        module: llm/openai_compatible/llm_handler_openai_compatible
+        model_name: "qwen2.5vl"
+        # Disable video input since no avatar
+        enable_video_input: False
+        history_length: 15
+        system_prompt: "You are a helpful AI assistant. Keep responses conversational and under 150 words for better audio experience. Be engaging and natural."
+        api_url: "http://ollama:11434/v1"
+        api_key: "ollama"
+        # Optimized for real-time conversation
+        timeout: 25
+        max_retries: 2
+        temperature: 0.7
+        max_tokens: 800
+        stream: false
+        # Connection settings
+        request_timeout: 30
+        connection_timeout: 5
+        read_timeout: 25
+        # Performance settings
+        enable_parallel_processing: false
+        batch_size: 1
+      LiteAvatar:
+        # Completely disable avatar generation
+        enabled: False
+        module: avatar/liteavatar/avatar_handler_liteavatar
+      # Ensure no other avatar handlers are loaded
+      MuseTalk:
+        enabled: False
+      AvatarMuseTalk:
+        enabled: False
+      MiniCPMAvatar:
+        enabled: False

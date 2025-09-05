@@ -1,0 +1,93 @@
+default:
+  logger:
+    log_level: "INFO"
+  service:
+    host: "0.0.0.0"
+    port: 8282
+    cert_file: "ssl_certs/localhost.crt"
+    cert_key: "ssl_certs/localhost.key"
+  chat_engine:
+    model_root: "models"
+    concurrent_limit: 1
+    handler_search_path:
+      - "src/handlers"
+    # Optimized TURN configuration for localhost
+    turn_config:
+      turn_provider: "turn_server"
+      urls:
+        - "stun:stun.l.google.com:19302"
+      username: ""
+      credential: ""
+    handler_configs:
+      RtcClient:
+        module: client/rtc_client/client_handler_rtc
+        connection_ttl: 180
+        concurrent_limit: 1
+        # Reduce frame processing load
+        enable_audio: true
+        enable_video: false
+        audio_frame_size: 1024
+        video_frame_rate: 0
+        # Optimize for text chat primarily
+        prefer_datachannel: true
+        datachannel_timeout: 30
+      SileroVad:
+        module: vad/silerovad/vad_handler_silero
+        # More sensitive settings for better voice detection
+        speaking_threshold: 0.3
+        start_delay: 1024
+        end_delay: 2000
+        buffer_look_back: 2000
+        speech_padding: 256
+        use_cpu: true
+        num_threads: 2
+        # Reduce VAD processing overhead
+        sample_rate: 16000
+        chunk_size: 512
+        # Enable faster processing
+        model_name: "silero_vad"
+        force_reload: false
+        device: "cpu"
+      Edge_TTS:
+        enabled: True
+        module: tts/edgetts/tts_handler_edgetts
+        voice: "en-US-JennyNeural"
+        sample_rate: 16000
+        # Optimize TTS for speed
+        rate: "+10%"
+        volume: "+0%"
+        pitch: "+0Hz"
+        # Reduce TTS timeout
+        timeout: 15
+        # Enable caching for faster responses
+        cache_enabled: true
+        max_cache_size: 50
+      LLMOpenAICompatible:
+        enabled: True
+        module: llm/openai_compatible/llm_handler_openai_compatible
+        model_name: "qwen2.5vl"
+        enable_video_input: False
+        history_length: 10
+        system_prompt: "You are an AI assistant. Keep responses under 100 words. Be helpful and concise."
+        api_url: "http://ollama:11434/v1"
+        api_key: "ollama"
+        # Optimized timeouts to prevent frame processing timeout
+        timeout: 25
+        max_retries: 1
+        temperature: 0.5
+        max_tokens: 500
+        stream: false
+        # Connection optimizations
+        request_timeout: 30
+        connection_timeout: 5
+        read_timeout: 25
+        # Reduce processing overhead
+        enable_parallel_processing: false
+        batch_size: 1
+        # Frame processing optimizations
+        frame_timeout: 30
+        max_frame_queue_size: 10
+        enable_frame_skipping: true
+      LiteAvatar:
+        enabled: False
+        module: avatar/liteavatar/avatar_handler_liteavatar

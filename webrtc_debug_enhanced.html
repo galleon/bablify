@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Enhanced WebRTC Debug - OpenAvatarChat</title>
+    <style>
+        body {
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            margin: 20px;
+            background-color: #1a1a1a;
+            color: #e0e0e0;
+        }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .status {
+            padding: 12px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border-left: 4px solid;
+        }
+        .success {
+            background: #0f2419;
+            color: #4ade80;
+            border-left-color: #4ade80;
+        }
+        .error {
+            background: #2d1b1b;
+            color: #f87171;
+            border-left-color: #f87171;
+        }
+        .warning {
+            background: #2d2916;
+            color: #fbbf24;
+            border-left-color: #fbbf24;
+        }
+        .info {
+            background: #1e2837;
+            color: #60a5fa;
+            border-left-color: #60a5fa;
+        }
+
+        button {
+            padding: 12px 24px;
+            margin: 8px 4px;
+            border: none;
+            border-radius: 6px;
+            background: #3b82f6;
+            color: white;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        button:hover { background: #2563eb; transform: translateY(-1px); }
+        button:disabled { background: #6b7280; cursor: not-allowed; transform: none; }
+
+        textarea {
+            width: 100%;
+            height: 300px;
+            background: #111827;
+            color: #e5e7eb;
+            border: 1px solid #374151;
+            border-radius: 6px;
+            padding: 12px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .panel {
+            background: #111827;
+            border: 1px solid #374151;
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        .state-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        .state-unknown { background: #6b7280; }
+        .state-new { background: #8b5cf6; }
+        .state-connecting { background: #f59e0b; }
+        .state-connected { background: #10b981; }
+        .state-disconnected { background: #ef4444; }
+        .state-failed { background: #dc2626; }
+        .state-closed { background: #374151; }
+
+        .datachannel-unknown { background: #6b7280; }
+        .datachannel-connecting { background: #f59e0b; }
+        .datachannel-open { background: #10b981; }
+        .datachannel-closing { background: #f97316; }
+        .datachannel-closed { background: #374151; }
+
+        h1, h2, h3 { color: #f9fafb; }
+        code {
+            background: #374151;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: inherit;
+        }
+
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+            margin: 16px 0;
+        }
+
+        .metric {
+            background: #1f2937;
+            padding: 12px;
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        .metric-label {
+            font-size: 12px;
+            color: #9ca3af;
+            margin-bottom: 4px;
+        }
+
+        .metric-value {
+            font-size: 18px;
+            font-weight: bold;
+            color: #f9fafb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Enhanced WebRTC Debug Tool</h1>
+
+        <div class="panel">
+            <h2>🎮 Controls</h2>
+            <button onclick="testConfiguration()">Test Configuration</button>
+            <button onclick="testMicrophone()">Test Microphone</button>
+            <button onclick="startWebRTCTest()">Start WebRTC Test</button>
+            <button onclick="stopWebRTCTest()" id="stopBtn" disabled>Stop Test</button>
+            <button onclick="clearLogs()">Clear Logs</button>
+            <button onclick="exportLogs()">Export Logs</button>
+        </div>
+
+        <div class="grid">
+            <div class="panel">
+                <h3>📊 Connection Status</h3>
+                <div id="connection-status">
+                    <p><span class="state-indicator state-unknown"></span> <strong>ICE Connection:</strong> <span id="ice-state">unknown</span></p>
+                    <p><span class="state-indicator state-unknown"></span> <strong>Peer Connection:</strong> <span id="peer-state">unknown</span></p>
+                    <p><span class="state-indicator datachannel-unknown"></span> <strong>Data Channel:</strong> <span id="channel-state">unknown</span></p>
+                    <p><strong>Gathering State:</strong> <span id="gathering-state">unknown</span></p>
+                    <p><strong>Signaling State:</strong> <span id="signaling-state">unknown</span></p>
+                </div>
+
+                <h3>📈 Metrics</h3>
+                <div class="metrics">
+                    <div class="metric">
+                        <div class="metric-label">Messages Sent</div>
+                        <div class="metric-value" id="messages-sent">0</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">Messages Received</div>
+                        <div class="metric-value" id="messages-received">0</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">Connection Time</div>
+                        <div class="metric-value" id="connection-time">0s</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">Send Errors</div>
+                        <div class="metric-value" id="send-errors">0</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h3>📋 Test Messages</h3>
+                <textarea id="test-message" placeholder="Enter test message (JSON format)">{"type": "chat", "data": "Hello, this is a test message!"}</textarea>
+                <button onclick="sendTestMessage()">Send Test Message</button>
+                <button onclick="sendStopMessage()">Send Stop Message</button>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h3>🔍 Debug Log</h3>
+            <div id="status-container"></div>
+            <textarea id="debug-log" readonly placeholder="Debug information will appear here..."></textarea>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let peerConnection = null;
+        let dataChannel = null;
+        let localStream = null;
+        let webrtcConfig = null;
+        let connectionStartTime = null;
+        let connectionTimeInterval = null;
+        let isTestRunning = false;
+
+        // Metrics
+        let metrics = {
+            messagesSent: 0,
+            messagesReceived: 0,
+            sendErrors: 0
+        };
+
+        // DOM elements
+        const debugLog = document.getElementById('debug-log');
+        const statusContainer = document.getElementById('status-container');
+        const stopBtn = document.getElementById('stopBtn');
+
+        // Logging function with enhanced formatting
+        function log(message, type = 'info', skipConsole = false) {
+            const timestamp = new Date().toLocaleTimeString();
+            const logMessage = `[${timestamp}] ${message}`;
+
+            debugLog.value += logMessage + '\n';
+            debugLog.scrollTop = debugLog.scrollHeight;
+
+            // Update status container with colored status
+            const statusDiv = document.createElement('div');
+            statusDiv.className = `status ${type}`;
+            statusDiv.textContent = message;
+            statusContainer.appendChild(statusDiv);
+
+            // Keep only last 10 status messages
+            while (statusContainer.children.length > 10) {
+                statusContainer.removeChild(statusContainer.firstChild);
+            }
+
+            if (!skipConsole) {
+                console.log(`🚀 ${logMessage}`);
+            }
+        }
+
+        // Enhanced state monitoring
+        function updateConnectionStates() {
+            if (!peerConnection) return;
+
+            const iceState = peerConnection.iceConnectionState;
+            const peerState = peerConnection.connectionState;
+            const gatheringState = peerConnection.iceGatheringState;
+            const signalingState = peerConnection.signalingState;
+            const channelState = dataChannel ? dataChannel.readyState : 'unknown';
+
+            document.getElementById('ice-state').textContent = iceState;
+            document.getElementById('peer-state').textContent = peerState;
+            document.getElementById('channel-state').textContent = channelState;
+            document.getElementById('gathering-state').textContent = gatheringState;
+            document.getElementById('signaling-state').textContent = signalingState;
+
+            // Update state indicators
+            updateStateIndicator('ice-state', iceState);
+            updateStateIndicator('peer-state', peerState);
+            updateStateIndicator('channel-state', channelState, true);
+
+            // Update connection time
+            if (connectionStartTime && (iceState === 'connected' || peerState === 'connected')) {
+                const elapsed = Math.floor((Date.now() - connectionStartTime) / 1000);
+                document.getElementById('connection-time').textContent = elapsed + 's';
+            }
+        }
+
+        function updateStateIndicator(elementId, state, isDataChannel = false) {
+            const element = document.getElementById(elementId).previousElementSibling;
+            element.className = 'state-indicator';
+
+            if (isDataChannel) {
+                element.classList.add(`datachannel-${state}`);
+            } else {
+                element.classList.add(`state-${state}`);
+            }
+        }
+
+        function updateMetrics() {
+            document.getElementById('messages-sent').textContent = metrics.messagesSent;
+            document.getElementById('messages-received').textContent = metrics.messagesReceived;
+            document.getElementById('send-errors').textContent = metrics.sendErrors;
+        }
+
+        // Safe channel send with detailed logging
+        function safeSend(message, messageType = 'unknown') {
+            if (!dataChannel) {
+                log(`❌ Cannot send ${messageType}: No data channel`, 'error');
+                metrics.sendErrors++;
+                updateMetrics();
+                return false;
+            }
+
+            log(`📤 Attempting to send ${messageType} (channel state: ${dataChannel.readyState})`, 'info');
+
+            if (dataChannel.readyState !== 'open') {
+                log(`❌ Cannot send ${messageType}: Data channel state is '${dataChannel.readyState}', expected 'open'`, 'error');
+                metrics.sendErrors++;
+                updateMetrics();
+                return false;
+            }
+
+            try {
+                const messageStr = typeof message === 'string' ? message : JSON.stringify(message);
+                dataChannel.send(messageStr);
+                log(`✅ Successfully sent ${messageType}`, 'success');
+                metrics.messagesSent++;
+                updateMetrics();
+                return true;
+            } catch (error) {
+                log(`❌ Failed to send ${messageType}: ${error.message}`, 'error');
+                metrics.sendErrors++;
+                updateMetrics();
+                return false;
+            }
+        }
+
+        // Test functions
+        async function testConfiguration() {
+            try {
+                log('🔧 Testing configuration endpoint...', 'info');
+                const response = await fetch('/openavatarchat/initconfig');
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const config = await response.json();
+                webrtcConfig = config;
+
+                log('✅ Configuration loaded successfully', 'success');
+                log(`Configuration: ${JSON.stringify(config, null, 2)}`, 'info', true);
+
+                if (config.rtc_configuration && config.rtc_configuration.iceServers) {
+                    const iceServers = config.rtc_configuration.iceServers;
+                    log(`✅ Found ${iceServers.length} ICE server(s)`, 'success');
+
+                    iceServers.forEach((server, index) => {
+                        log(`  ICE Server ${index + 1}: ${JSON.stringify(server)}`, 'info', true);
+                    });
+                } else {
+                    log('⚠️  No ICE servers configured - this may cause connection issues', 'warning');
+                }
+            } catch (error) {
+                log(`❌ Configuration test failed: ${error.message}`, 'error');
+                log(`Error details: ${error.stack}`, 'error', true);
+            }
+        }
+
+        async function testMicrophone() {
+            try {
+                log('🎤 Testing microphone access...', 'info');
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    audio: {
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        autoGainControl: true
+                    }
+                });
+
+                log('✅ Microphone access granted', 'success');
+                log(`Audio tracks: ${stream.getAudioTracks().length}`, 'info');
+
+                stream.getAudioTracks().forEach(track => {
+                    log(`  Track: ${track.label} (${track.kind})`, 'info', true);
+                    track.stop();
+                });
+            } catch (error) {
+                log(`❌ Microphone test failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function startWebRTCTest() {
+            if (isTestRunning) {
+                log('⚠️  Test already running', 'warning');
+                return;
+            }
+
+            try {
+                log('🚀 Starting enhanced WebRTC test...', 'info');
+                isTestRunning = true;
+                stopBtn.disabled = false;
+                connectionStartTime = Date.now();
+
+                // Get configuration if not already loaded
+                if (!webrtcConfig) {
+                    await testConfiguration();
+                    if (!webrtcConfig) {
+                        throw new Error('Failed to load configuration');
+                    }
+                }
+
+                // Create RTCPeerConnection with enhanced logging
+                log('🔗 Creating RTCPeerConnection...', 'info');
+                peerConnection = new RTCPeerConnection(webrtcConfig.rtc_configuration);
+
+                // Set up comprehensive event handlers
+                setupPeerConnectionEventHandlers();
+
+                // Create data channel
+                log('📺 Creating data channel...', 'info');
+                dataChannel = peerConnection.createDataChannel('text', {
+                    ordered: true,
+                    maxRetransmits: 3
+                });
+
+                setupDataChannelEventHandlers();
+
+                // Get user media
+                log('🎤 Getting user media...', 'info');
+                localStream = await navigator.mediaDevices.getUserMedia({
+                    audio: {
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        autoGainControl: true
+                    }
+                });
+
+                localStream.getTracks().forEach(track => {
+                    peerConnection.addTrack(track, localStream);
+                    log(`✅ Added ${track.kind} track: ${track.label}`, 'success');
+                });
+
+                // Create and set local description
+                log('📝 Creating offer...', 'info');
+                const offer = await peerConnection.createOffer();
+                await peerConnection.setLocalDescription(offer);
+
+                log('✅ Local description set', 'success');
+                log(`SDP type: ${offer.type}`, 'info');
+
+                // Send offer to server
+                const webrtc_id = `enhanced-debug-${Date.now()}`;
+                log(`📡 Sending offer to server (ID: ${webrtc_id})...`, 'info');
+
+                const offerResponse = await fetch('/webrtc/offer', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        webrtc_id: webrtc_id,
+                        sdp: offer.sdp,
+                        type: offer.type
+                    })
+                });
+
+                if (!offerResponse.ok) {
+                    const errorText = await offerResponse.text();
+                    throw new Error(`Offer failed: ${offerResponse.status} ${offerResponse.statusText}\n${errorText}`);
+                }
+
+                const answer = await offerResponse.json();
+                log('✅ Received SDP answer from server', 'success');
+
+                // Set remote description
+                await peerConnection.setRemoteDescription(new RTCSessionDescription({
+                    type: answer.type,
+                    sdp: answer.sdp
+                }));
+
+                log('✅ Remote description set - WebRTC negotiation completed!', 'success');
+
+                // Start connection time tracking
+                connectionTimeInterval = setInterval(updateConnectionStates, 1000);
+
+                // Test data channel after a delay
+                setTimeout(() => {
+                    if (dataChannel && dataChannel.readyState === 'open') {
+                        safeSend({ type: 'test', message: 'Hello from enhanced debugger!' }, 'initial test');
+                    }
+                }, 2000);
+
+            } catch (error) {
+                log(`❌ WebRTC test failed: ${error.message}`, 'error');
+                log(`Error stack: ${error.stack}`, 'error', true);
+                stopWebRTCTest();
+            }
+        }
+
+        function setupPeerConnectionEventHandlers() {
+            peerConnection.oniceconnectionstatechange = () => {
+                const state = peerConnection.iceConnectionState;
+                log(`🧊 ICE connection state: ${state}`,
+                    state === 'connected' || state === 'completed' ? 'success' :
+                    state === 'failed' ? 'error' : 'info');
+                updateConnectionStates();
+            };
+
+            peerConnection.onconnectionstatechange = () => {
+                const state = peerConnection.connectionState;
+                log(`📡 Peer connection state: ${state}`,
+                    state === 'connected' ? 'success' :
+                    state === 'failed' ? 'error' : 'info');
+                updateConnectionStates();
+            };
+
+            peerConnection.onicegatheringstatechange = () => {
+                const state = peerConnection.iceGatheringState;
+                log(`🔍 ICE gathering state: ${state}`, 'info');
+                updateConnectionStates();
+            };
+
+            peerConnection.onsignalingstatechange = () => {
+                const state = peerConnection.signalingState;
+                log(`📋 Signaling state: ${state}`, 'info');
+                updateConnectionStates();
+            };
+
+            peerConnection.onicecandidate = (event) => {
+                if (event.candidate) {
+                    log(`🎯 ICE candidate: ${event.candidate.candidate}`, 'info', true);
+                } else {
+                    log('🎯 ICE gathering completed', 'info');
+                }
+            };
+        }
+
+        function setupDataChannelEventHandlers() {
+            dataChannel.onopen = () => {
+                log('✅ Data channel opened!', 'success');
+                updateConnectionStates();
+
+                // Send a test message when channel opens
+                setTimeout(() => {
+                    safeSend({ type: 'init', timestamp: Date.now() }, 'channel open test');
+                }, 100);
+            };
+
+            dataChannel.onclose = () => {
+                log('📪 Data channel closed', 'info');
+                updateConnectionStates();
+            };
+
+            dataChannel.onerror = (error) => {
+                log(`❌ Data channel error: ${error}`, 'error');
+                updateConnectionStates();
+            };
+
+            dataChannel.onmessage = (event) => {
+                metrics.messagesReceived++;
+                updateMetrics();
+                log(`📨 Received message: ${event.data}`, 'success');
+
+                try {
+                    const parsed = JSON.parse(event.data);
+                    log(`Message type: ${parsed.type}`, 'info', true);
+                } catch (e) {
+                    log('Message is not JSON', 'info', true);
+                }
+            };
+        }
+
+        function stopWebRTCTest() {
+            if (!isTestRunning) return;
+
+            log('🛑 Stopping WebRTC test...', 'info');
+            isTestRunning = false;
+            stopBtn.disabled = true;
+
+            if (connectionTimeInterval) {
+                clearInterval(connectionTimeInterval);
+                connectionTimeInterval = null;
+            }
+
+            if (localStream) {
+                localStream.getTracks().forEach(track => {
+                    track.stop();
+                    log(`🔇 Stopped ${track.kind} track`, 'info');
+                });
+                localStream = null;
+            }
+
+            if (dataChannel) {
+                dataChannel.close();
+                dataChannel = null;
+            }
+
+            if (peerConnection) {
+                peerConnection.close();
+                peerConnection = null;
+            }
+
+            connectionStartTime = null;
+            updateConnectionStates();
+            log('✅ WebRTC test stopped', 'success');
+        }
+
+        function sendTestMessage() {
+            const messageText = document.getElementById('test-message').value;
+            try {
+                const message = JSON.parse(messageText);
+                safeSend(message, 'custom test message');
+            } catch (error) {
+                log(`❌ Invalid JSON in test message: ${error.message}`, 'error');
+            }
+        }
+
+        function sendStopMessage() {
+            safeSend({ type: 'stop_chat' }, 'stop message');
+        }
+
+        function clearLogs() {
+            debugLog.value = '';
+            statusContainer.innerHTML = '';
+            metrics = { messagesSent: 0, messagesReceived: 0, sendErrors: 0 };
+            updateMetrics();
+            log('🧹 Logs cleared', 'info');
+        }
+
+        function exportLogs() {
+            const blob = new Blob([debugLog.value], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `webrtc-debug-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.log`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            log('📁 Logs exported', 'success');
+        }
+
+        // Auto-run configuration test on load
+        window.onload = () => {
+            log('🌟 Enhanced WebRTC Debug Tool loaded', 'success');
+            log(`User Agent: ${navigator.userAgent}`, 'info', true);
+            log(`WebRTC Support: ${!!window.RTCPeerConnection}`, 'info');
+            log(`DataChannel Support: ${!!window.RTCDataChannel}`, 'info');
+            testConfiguration();
+            updateConnectionStates();
+        };
+
+        // Handle page unload
+        window.onbeforeunload = () => {
+            if (isTestRunning) {
+                stopWebRTCTest();
+            }
+        };
+    </script>
+</body>
+</html>

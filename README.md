@@ -1,21 +1,72 @@
-<h1 style='text-align: center; margin-bottom: 1rem'> Open Avatar Chat </h1>
+<h1 style='text-align: center; margin-bottom: 1rem'> 🌐 Bablify </h1>
 
 <p align="center">
-<strong>中文 | <a href="readme_en.md">English</a></strong>
+<strong>Multilingual AI Avatar Chat System</strong>
 </p>
-
 
 <p align="center">
-<strong>模块化的交互数字人对话实现。</strong>
+<em>A fork of <a href="https://github.com/HumanAIGC-Engineering/OpenAvatarChat">OpenAvatarChat</a> - Enhanced for international use with WebRTC fixes and multilingual support</em>
 </p>
 
-
-<p align="center" style="display: flex; flex-direction: row; justify-content: center">
- 🤗 <a href="https://huggingface.co/spaces/HumanAIGC-Engineering-Team/open-avatar-chat">Demo</a>&nbsp&nbsp|&nbsp&nbsp<img alt="Static Badge" style="height: 10px;" src="./assets/images/modelscope_logo.png"> <a href="https://www.modelscope.cn/studios/HumanAIGC-Engineering/open-avatar-chat">Demo</a>&nbsp&nbsp|&nbsp&nbsp💬 <a href="https://github.com/HumanAIGC-Engineering/OpenAvatarChat/blob/main/assets/images/community_wechat.png">WeChat (微信)</a>
-
+<p align="center">
+<strong>🚀 Real-time AI conversations with text, voice, and visual avatars</strong>
 </p>
 
-## 🔥核心亮点
+<p align="center">
+📱 <strong>Web-based</strong> | 🔊 <strong>TTS/STT</strong> | 👤 <strong>Visual Avatars</strong> | 🌍 <strong>Multilingual</strong> | 🔒 <strong>Self-hosted</strong>
+</p>
+
+## 🙏 Acknowledgments
+
+This project is a fork of the excellent [OpenAvatarChat](https://github.com/HumanAIGC-Engineering/OpenAvatarChat) by the HumanAIGC-Engineering team. We've enhanced it with:
+- ✅ **Fixed WebRTC DataChannel issues** for reliable real-time communication
+- ✅ **International language support** and model compatibility  
+- ✅ **Enhanced error handling** and debugging capabilities
+- ✅ **Mac M3 optimizations** for Apple Silicon performance
+
+Original project credits go to the OpenAvatarChat team for creating this amazing foundation.
+
+## 🚀 Quick Start
+
+### Prerequisites
+- Docker Desktop installed and running
+- OpenAI API key (or compatible LLM API)
+- Git with submodules support
+
+### Setup Instructions
+
+1. **Clone the repository:**
+   ```bash
+   git clone --recursive https://github.com/galleon/bablify.git
+   cd bablify
+   ```
+
+2. **Set up your API key:**
+   ```bash
+   # Copy the environment template
+   cp .env.example .env
+   
+   # Edit .env and add your OpenAI API key:
+   # OPENAI_API_KEY=your_actual_openai_api_key_here
+   ```
+
+3. **Build and run (Mac M3 optimized):**
+   ```bash
+   ./build_mac_m3.sh
+   ```
+
+4. **Access the application:**
+   - Open your browser to: `https://localhost:8282`
+   - Accept the self-signed certificate warning
+   - Click the subtitle toggle button to show chat interface
+   - Start chatting with the AI!
+
+### Configuration Files
+- Main config: `config/chat_with_minicpm_mac_m3.yaml`
+- Environment variables: `.env` (create from `.env.example`)
+- Alternative configs available in `config/` directory
+
+## 🔥 Key Features
 - **多模态语言模型：支持多模态语言模型，包括文本、音频、视频等。**
 - **模块化设计：使用模块化的设计，可以灵活地替换组件，实现不同功能组合。**
 

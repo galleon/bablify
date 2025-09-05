@@ -1,0 +1,345 @@
+# Advanced Docker Compose Configuration for Mac M3 Max
+# OpenAvatarChat - Optimized for Apple Silicon with Monitoring
+# Version 2.0
+
+version: '3.8'
+
+services:
+  # Main OpenAvatarChat application
+  open-avatar-chat:
+    container_name: open-avatar-chat-mac-m3-advanced
+    build:
+      context: .
+      dockerfile: Dockerfile.mac-m3-advanced
+      platforms:
+        - linux/arm64
+      args:
+        - CONFIG_FILE=config/chat_with_minicpm_mac_m3.yaml
+        - BUILD_DATE=${BUILD_DATE:-}
+        - BUILD_VERSION=2.0-advanced
+        - VCS_REF=${VCS_REF:-}
+      cache_from:
+        - open-avatar-chat:mac-m3-advanced
+    image: open-avatar-chat:mac-m3-advanced
+    restart: unless-stopped
+
+    # Network configuration
+    ports:
+      - "8282:8282"
+      - "8283:8283"  # Additional port for monitoring
+
+    # Volume mounts for persistence and configuration
+    volumes:
+      - ./models:/root/open-avatar-chat/models:rw
+      - ./resource:/root/open-avatar-chat/resource:rw
+      - ./ssl_certs:/root/open-avatar-chat/ssl_certs:rw
+      - ./logs:/root/open-avatar-chat/logs:rw
+      - ./config:/root/open-avatar-chat/config:ro
+      - ./temp:/root/open-avatar-chat/temp:rw
+      - avatar_cache:/root/open-avatar-chat/.cache:rw
+
+    # Environment variables for Mac M3 optimization
+    environment:
+      # PyTorch optimizations
+      - PYTORCH_ENABLE_MPS_FALLBACK=1
+      - PYTORCH_MPS_HIGH_WATERMARK_RATIO=0.0
+      - FLASH_ATTENTION_FORCE_FALLBACK=1
+      - TRANSFORMERS_NO_FLASH_ATTENTION=1
+      - DISABLE_FLASH_ATTN=1
+      - ACCELERATE_USE_CPU=1
+
+      # CPU threading optimization for M3
+      - OMP_NUM_THREADS=8
+      - MKL_NUM_THREADS=8
+      - VECLIB_MAXIMUM_THREADS=8
+      - NUMEXPR_NUM_THREADS=8
+      - OPENBLAS_NUM_THREADS=8
+
+      # Memory management
+      - MALLOC_ARENA_MAX=4
+      - PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:512
+      - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+
+      # Application configuration
+      - CONFIG_FILE=config/chat_with_minicpm_mac_m3.yaml
+      - LOG_LEVEL=INFO
+      - ENABLE_METRICS=true
+      - ENABLE_PROFILING=false
+
+      # Security
+      - SECURE_COOKIES=true
+      - SSL_VERIFY=true
+
+    # Resource limits optimized for Mac M3 Max
+    deploy:
+      resources:
+        limits:
+          memory: 24G
+          cpus: '12.0'
+        reservations:
+          memory: 8G
+          cpus: '4.0'
+
+    # Health check configuration
+    healthcheck:
+      test: ["/usr/local/bin/healthcheck.sh"]
+      interval: 45s
+      timeout: 15s
+      retries: 3
+      start_period: 120s
+
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "5"
+        compress: "true"
+
+    # Security options
+    security_opt:
+      - no-new-privileges:true
+    read_only: false
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=1g
+
+    # Dependencies
+    depends_on:
+      redis:
+        condition: service_healthy
+      prometheus:
+        condition: service_started
+
+    # Networks
+    networks:
+      - avatar-network
+      - monitoring
+
+  # Redis for caching and session management
+  redis:
+    image: redis:7-alpine
+    container_name: avatar-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+
+    volumes:
+      - redis_data:/data:rw
+
+    ports:
+      - "6379:6379"
+
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1.0'
+        reservations:
+          memory: 256M
+          cpus: '0.5'
+
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+    networks:
+      - avatar-network
+
+  # Prometheus for metrics collection
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: avatar-prometheus
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=7d'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus:rw
+
+    ports:
+      - "9090:9090"
+
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '2.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+
+    networks:
+      - monitoring
+
+  # Grafana for monitoring dashboards
+  grafana:
+    image: grafana/grafana:latest
+    container_name: avatar-grafana
+    restart: unless-stopped
+
+    volumes:
+      - grafana_data:/var/lib/grafana:rw
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+
+    ports:
+      - "3000:3000"
+
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource
+
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1.0'
+        reservations:
+          memory: 256M
+          cpus: '0.5'
+
+    depends_on:
+      - prometheus
+
+    networks:
+      - monitoring
+
+  # Nginx reverse proxy with SSL termination
+  nginx:
+    image: nginx:alpine
+    container_name: avatar-nginx
+    restart: unless-stopped
+
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl_certs:/etc/nginx/ssl:ro
+      - ./nginx/html:/usr/share/nginx/html:ro
+
+    ports:
+      - "80:80"
+      - "443:443"
+
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '1.0'
+        reservations:
+          memory: 128M
+          cpus: '0.25'
+
+    depends_on:
+      - open-avatar-chat
+
+    networks:
+      - avatar-network
+      - monitoring
+
+  # Log aggregator (optional)
+  fluentd:
+    image: fluent/fluentd:v1.16-debian-1
+    container_name: avatar-fluentd
+    restart: unless-stopped
+
+    volumes:
+      - ./monitoring/fluentd:/fluentd/etc:ro
+      - ./logs:/fluentd/log:rw
+
+    ports:
+      - "24224:24224"
+      - "24224:24224/udp"
+
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 128M
+          cpus: '0.25'
+
+    networks:
+      - monitoring
+
+# Network definitions
+networks:
+  avatar-network:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.20.0.0/16
+
+  monitoring:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.21.0.0/16
+
+# Volume definitions
+volumes:
+  # Application data volumes
+  avatar_cache:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./cache
+
+  # Database volumes
+  redis_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./data/redis
+
+  # Monitoring volumes
+  prometheus_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./data/prometheus
+
+  grafana_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./data/grafana
+
+# Extension fields for reusability
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "10m"
+    max-file: "3"
+    compress: "true"
+
+x-deploy-mac-m3: &deploy-mac-m3
+  resources:
+    limits:
+      cpus: '12.0'
+      memory: 24G
+    reservations:
+      cpus: '4.0'
+      memory: 8G
+
+x-healthcheck-default: &healthcheck-default
+  interval: 30s
+  timeout: 10s
+  retries: 3
+  start_period: 60s

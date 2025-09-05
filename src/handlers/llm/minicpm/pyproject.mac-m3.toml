@@ -1,0 +1,11 @@
+[project]
+name = "minicpm"
+version = "0.1.0"
+requires-python = ">=3.10, <3.13"
+dependencies = [
+    "onnxruntime~=1.20.1"
+]
+
+# Mac M3 optimizations - removed onnxruntime-gpu dependency
+# as it doesn't have ARM64 Linux wheels and GPU acceleration
+# is not needed for Mac M3 CPU-optimized inference

@@ -1,0 +1,181 @@
+# Mac M3 Optimized Dockerfile - Simple Improvements
+# Based on working Dockerfile.mac-m3 with better caching and layer optimization
+FROM python:3.11-slim
+
+LABEL authors="HumanAIGC-Engineering"
+LABEL description="Mac M3 Max optimized build with improved caching"
+
+ARG CONFIG_FILE=config/chat_with_minicpm_mac_m3.yaml
+ARG WORK_DIR=/root/open-avatar-chat
+
+# Environment variables for Mac M3 optimization
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTORCH_ENABLE_MPS_FALLBACK=1
+ENV PYTORCH_MPS_HIGH_WATERMARK_RATIO=0.0
+ENV FLASH_ATTENTION_FORCE_FALLBACK=1
+ENV TRANSFORMERS_NO_FLASH_ATTENTION=1
+ENV DISABLE_FLASH_ATTN=1
+
+# Install system dependencies in a single layer with cleanup
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    build-essential \
+    cmake \
+    git \
+    curl \
+    wget \
+    libgl1 \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender-dev \
+    libgomp1 \
+    libgcc-s1 \
+    libc6-dev \
+    pkg-config \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* \
+    && rm -rf /tmp/* /var/tmp/*
+
+WORKDIR $WORK_DIR
+
+# Install UV package manager early for better caching
+RUN python3 -m pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir uv
+
+# Copy dependency files first (better layer caching)
+COPY ./pyproject.mac-m3.toml $WORK_DIR/pyproject.toml
+COPY ./install.py $WORK_DIR/install.py
+COPY ./src/third_party $WORK_DIR/src/third_party
+
+# Create virtual environment
+RUN uv venv --python 3.11 && \
+    echo 'source .venv/bin/activate' >> ~/.bashrc
+
+# Install core dependencies (cached layer if dependencies don't change)
+RUN uv sync --no-install-workspace --index-strategy unsafe-best-match
+
+# Copy source files (separate layer for better caching)
+COPY ./src $WORK_DIR/src
+COPY ./scripts $WORK_DIR/scripts
+
+# Copy and process config file
+COPY $CONFIG_FILE /tmp/build_config.yaml
+RUN echo "Using config file for Mac M3: ${CONFIG_FILE}"
+
+# Mac M3 specific optimizations - create pyproject.toml files
+RUN cp src/handlers/llm/minicpm/pyproject.toml src/handlers/llm/minicpm/pyproject.toml.original 2>/dev/null || true && \
+    cp src/handlers/avatar/liteavatar/pyproject.toml src/handlers/avatar/liteavatar/pyproject.toml.original 2>/dev/null || true
+
+# Create optimized MiniCPM pyproject.toml
+RUN echo '[project]' > src/handlers/llm/minicpm/pyproject.toml && \
+    echo 'name = "minicpm"' >> src/handlers/llm/minicpm/pyproject.toml && \
+    echo 'version = "0.1.0"' >> src/handlers/llm/minicpm/pyproject.toml && \
+    echo 'requires-python = ">=3.10, <3.13"' >> src/handlers/llm/minicpm/pyproject.toml && \
+    echo 'dependencies = [' >> src/handlers/llm/minicpm/pyproject.toml && \
+    echo '    "onnxruntime~=1.20.1"' >> src/handlers/llm/minicpm/pyproject.toml && \
+    echo ']' >> src/handlers/llm/minicpm/pyproject.toml
+
+# Create optimized LiteAvatar pyproject.toml
+RUN echo '[project]' > src/handlers/avatar/liteavatar/pyproject.toml && \
+    echo 'name = "liteavatar"' >> src/handlers/avatar/liteavatar/pyproject.toml && \
+    echo 'version = "0.1.0"' >> src/handlers/avatar/liteavatar/pyproject.toml && \
+    echo 'requires-python = ">=3.10, <3.13"' >> src/handlers/avatar/liteavatar/pyproject.toml && \
+    echo 'dependencies = [' >> src/handlers/avatar/liteavatar/pyproject.toml && \
+    echo '    "funasr~=1.2.3",' >> src/handlers/avatar/liteavatar/pyproject.toml && \
+    echo '    "h5py~=3.12.1",' >> src/handlers/avatar/liteavatar/pyproject.toml && \
+    echo '    "jieba~=0.42.1",' >> src/handlers/avatar/liteavatar/pyproject.toml && \
+    echo '    "pillow~=11.1.0",' >> src/handlers/avatar/liteavatar/pyproject.toml && \
+    echo '    "pydub~=0.25.1",' >> src/handlers/avatar/liteavatar/pyproject.toml && \
+    echo '    "pypinyin~=0.53.0",' >> src/handlers/avatar/liteavatar/pyproject.toml && \
+    echo '    "transformers==4.44.1",' >> src/handlers/avatar/liteavatar/pyproject.toml && \
+    echo '    "typeguard==2.13.3",' >> src/handlers/avatar/liteavatar/pyproject.toml && \
+    echo '    "vector-quantize-pytorch~=1.21.7",' >> src/handlers/avatar/liteavatar/pyproject.toml && \
+    echo '    "vocos~=0.1.0",' >> src/handlers/avatar/liteavatar/pyproject.toml && \
+    echo '    "onnxruntime~=1.20.1"' >> src/handlers/avatar/liteavatar/pyproject.toml && \
+    echo ']' >> src/handlers/avatar/liteavatar/pyproject.toml
+
+# Apply patches for Mac M3 compatibility in Docker
+RUN set -e && \
+    # Enhanced model path handling \
+    sed -i '/model_path = os.path.join(project_dir, engine_config.model_root, model_name)/c\
+        # Check if model_name is a Hugging Face model ID (contains /)\
+        if "/" in model_name:\
+            model_path = model_name  # Use HF model ID directly\
+        else:\
+            model_path = os.path.join(project_dir, engine_config.model_root, model_name)' \
+    src/handlers/llm/minicpm/llm_handler_minicpm.py && \
+    \
+    # Patch attention implementation \
+    sed -i 's/attn_implementation='\''sdpa'\''/attn_implementation=getattr(handler_config, "attn_implementation", "eager")/' \
+    src/handlers/llm/minicpm/llm_handler_minicpm.py && \
+    \
+    # Add Mac M3 parameters \
+    sed -i '/skip_video_frame: int = Field(default=-1)/a\    attn_implementation: str = Field(default="eager")\n    trust_remote_code: bool = Field(default=True)\n    device: str = Field(default="cpu")\n    torch_dtype: str = Field(default="float32")\n    low_cpu_mem_usage: bool = Field(default=True)\n    max_memory_gb: int = Field(default=16)\n    batch_size: int = Field(default=1)\n    num_threads: int = Field(default=8)' \
+    src/handlers/llm/minicpm/llm_handler_minicpm.py && \
+    \
+    # Fix MPS availability check in SenseVoice handler for Docker compatibility \
+    sed -i 's/elif torch.mps.is_available():/elif hasattr(torch, "mps") and torch.mps.is_available():/' \
+    src/handlers/asr/sensevoice/asr_handler_sensevoice.py
+
+# Execute installation scripts with timeout protection
+RUN set -e && \
+    chmod +x $WORK_DIR/scripts/pre_config_install.sh && \
+    timeout 600 $WORK_DIR/scripts/pre_config_install.sh --config /tmp/build_config.yaml && \
+    \
+    # Install config dependencies with retry \
+    for attempt in 1 2 3; do \
+        if timeout 900 uv run install.py \
+            --config /tmp/build_config.yaml \
+            --uv \
+            --skip-core; then \
+            break; \
+        elif [ $attempt -eq 3 ]; then \
+            echo "Installation failed after 3 attempts"; \
+            exit 1; \
+        else \
+            echo "Retrying installation (attempt $((attempt + 1)))..."; \
+            sleep 30; \
+        fi; \
+    done && \
+    \
+    # Execute post-config installation \
+    chmod +x $WORK_DIR/scripts/post_config_install.sh && \
+    timeout 300 $WORK_DIR/scripts/post_config_install.sh --config /tmp/build_config.yaml
+
+# Copy remaining files (separate layer to avoid rebuilding above layers)
+COPY ./config $WORK_DIR/config
+COPY ./resource $WORK_DIR/resource
+
+# Copy .env files if they exist and create necessary directories
+RUN mkdir -p $WORK_DIR/models \
+    $WORK_DIR/logs \
+    $WORK_DIR/ssl_certs \
+    $WORK_DIR/temp && \
+    chmod 755 $WORK_DIR/models \
+    $WORK_DIR/logs \
+    $WORK_DIR/ssl_certs \
+    $WORK_DIR/temp && \
+    cp .env* $WORK_DIR/ 2>/dev/null || echo "No .env files found"
+
+# Clean up build artifacts
+RUN rm -f /tmp/build_config.yaml && \
+    rm -rf /tmp/* /var/tmp/* && \
+    find $WORK_DIR -name "*.pyc" -delete && \
+    find $WORK_DIR -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
+
+# Set up environment
+ENV PATH="$WORK_DIR/.venv/bin:$PATH"
+ENV VIRTUAL_ENV="$WORK_DIR/.venv"
+
+# Health check with better timing for Mac M3
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:8282/health || exit 1
+
+# Expose port
+EXPOSE 8282
+
+# Entry point with error handling
+ENTRYPOINT ["uv", "run", "/root/open-avatar-chat/src/demo.py", "--config", "/root/open-avatar-chat/config/chat_with_minicpm_mac_m3.yaml"]

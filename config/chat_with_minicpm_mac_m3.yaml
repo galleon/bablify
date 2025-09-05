@@ -1,0 +1,55 @@
+default:
+  logger:
+    log_level: "INFO"
+  service:
+    host: "0.0.0.0"
+    port: 8282
+    cert_file: "ssl_certs/localhost.crt"
+    cert_key: "ssl_certs/localhost.key"
+  chat_engine:
+    model_root: "models"
+    handler_search_path:
+      - "src/handlers"
+    handler_configs:
+      RtcClient:
+        module: client/rtc_client/client_handler_rtc
+      SileroVad:
+        module: vad/silerovad/vad_handler_silero
+        speaking_threshold: 0.5
+        start_delay: 2048
+        end_delay: 5000
+        buffer_look_back: 5000
+        speech_padding: 512
+        # Mac M3 optimizations for VAD
+        use_cpu: true
+        num_threads: 4
+      SenseVoice:
+        enabled: True
+        module: asr/sensevoice/asr_handler_sensevoice
+        model_name: "iic/SenseVoiceSmall"
+      EdgeTTS:
+        enabled: True
+        module: tts/edgetts/tts_handler_edgetts
+        voice: "en-US-JennyNeural"
+      LLMOpenAICompatible:
+        enabled: True
+        module: llm/openai_compatible/llm_handler_openai_compatible
+        model_name: "gpt-3.5-turbo"
+        enable_video_input: False # CPU-friendly without video processing
+        history_length: 20
+        system_prompt: "You are an AI assistant optimized for Mac M3. You provide helpful, accurate responses in a conversational manner. Keep responses concise and engaging."
+        api_url: "https://api.openai.com/v1"
+        api_key: "" # Set your OpenAI API key here or via environment variable OPENAI_API_KEY
+      LiteAvatar:
+        enabled: false # Disabled to focus on WebRTC DataChannel testing
+        module: avatar/liteavatar/avatar_handler_liteavatar
+        avatar_name: 20250408/sample_data
+        fps: 20 # Reduced for Mac M3 performance
+        debug: false
+        enable_fast_mode: true # Enable for better Mac performance
+        use_gpu: false # Use CPU on Mac M3
+        # Mac M3 optimizations
+        num_workers: 4
+        memory_efficient: true
+        low_memory_mode: true
+        batch_inference: false

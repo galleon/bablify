@@ -1,0 +1,61 @@
+default:
+  logger:
+    log_level: "DEBUG"
+  service:
+    host: "0.0.0.0"
+    port: 8282
+    cert_file: "ssl_certs/localhost.crt"
+    cert_key: "ssl_certs/localhost.key"
+  chat_engine:
+    model_root: "models"
+    concurrent_limit: 1
+    handler_search_path:
+      - "src/handlers"
+    handler_configs:
+      RtcClient:
+        enabled: True
+        module: client/rtc_client/client_handler_rtc
+        connection_ttl: 900
+        concurrent_limit: 1
+        # Enhanced WebRTC debugging for our DataChannel fixes
+        debug: true
+        ice_servers:
+          - urls: "stun:stun.l.google.com:19302"
+          - urls: "stun:stun1.l.google.com:19302"
+        rtc_configuration:
+          iceServers:
+            - urls: "stun:stun.l.google.com:19302"
+            - urls: "stun:stun1.l.google.com:19302"
+          bundlePolicy: "balanced"
+          iceCandidatePoolSize: 10
+          iceTransportPolicy: "all"
+      # Minimal LLM handler that just echoes (no API key needed)
+      EchoLLM:
+        enabled: True
+        module: llm/echo/llm_handler_echo
+        system_prompt: "WebRTC Test Echo Bot: "
+        response_delay: 500
+        max_response_length: 100
+      # Disable heavy components for WebRTC testing
+      SileroVad:
+        enabled: False
+        module: vad/silerovad/vad_handler_silero
+        speaking_threshold: 0.5
+        start_delay: 2048
+        end_delay: 5000
+        buffer_look_back: 5000
+        speech_padding: 512
+      SenseVoice:
+        enabled: False
+        module: asr/sensevoice/asr_handler_sensevoice
+        model_name: "iic/SenseVoiceSmall"
+      EdgeTTS:
+        enabled: False
+        module: tts/edgetts/tts_handler_edgetts
+        voice: "en-US-JennyNeural"
+      LLMOpenAICompatible:
+        enabled: False
+        module: llm/openai_compatible/llm_handler_openai_compatible
+      LiteAvatar:
+        enabled: False
+        module: avatar/liteavatar/avatar_handler_liteavatar

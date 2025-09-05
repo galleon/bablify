@@ -1,0 +1,66 @@
+default:
+  logger:
+    log_level: "INFO"
+  service:
+    host: "0.0.0.0"
+    port: 8282
+    cert_file: "ssl_certs/localhost.crt"
+    cert_key: "ssl_certs/localhost.key"
+  chat_engine:
+    model_root: "models"
+    concurrent_limit: 1
+    handler_search_path:
+      - "src/handlers"
+    # WebRTC configuration at the chat_engine level
+    turn_config:
+      turn_server:
+        urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"]
+        username: ""
+        credential: ""
+    handler_configs:
+      RtcClient:
+        module: client/rtc_client/client_handler_rtc
+        connection_ttl: 600
+        concurrent_limit: 1
+        # Let the engine-level turn_config handle WebRTC
+        turn_config: null
+      SileroVad:
+        module: vad/silerovad/vad_handler_silero
+        speaking_threshold: 0.4
+        start_delay: 1500
+        end_delay: 4000
+        buffer_look_back: 4000
+        speech_padding: 512
+        use_cpu: true
+        num_threads: 4
+      Edge_TTS:
+        enabled: True
+        module: tts/edgetts/tts_handler_edgetts
+        voice: "en-US-JennyNeural"
+        sample_rate: 24000
+      LLMOpenAICompatible:
+        enabled: True
+        module: llm/openai_compatible/llm_handler_openai_compatible
+        model_name: "qwen2.5vl"
+        enable_video_input: True
+        history_length: 20
+        system_prompt: "You are an AI assistant running locally on Mac M3 via Ollama. You can see images and respond to text. You provide helpful, accurate responses in a conversational manner. Keep responses concise and engaging."
+        api_url: "http://ollama:11434/v1"
+        api_key: "ollama"
+        timeout: 45
+        max_retries: 2
+        temperature: 0.7
+        max_tokens: 1500
+        stream: false
+      LiteAvatar:
+        enabled: False
+        module: avatar/liteavatar/avatar_handler_liteavatar
+        avatar_name: 20250408/sample_data
+        fps: 20
+        debug: false
+        enable_fast_mode: true
+        use_gpu: false
+        num_workers: 4
+        memory_efficient: true
+        low_memory_mode: true
+        batch_inference: false

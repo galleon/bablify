@@ -1,0 +1,307 @@
+default:
+  logger:
+    log_level: "INFO"
+    log_format: "structured"
+    log_file: "logs/avatar_chat_mac_m3_advanced.log"
+    max_log_files: 5
+    max_log_size_mb: 100
+    enable_console_output: true
+    enable_file_output: true
+    log_rotation: true
+    performance_logging: true
+
+  service:
+    host: "0.0.0.0"
+    port: 8282
+    cert_file: "ssl_certs/localhost.crt"
+    cert_key: "ssl_certs/localhost.key"
+    enable_cors: true
+    cors_origins: ["https://localhost:8282", "http://localhost:3000"]
+    max_request_size: "100MB"
+    timeout_seconds: 300
+    workers: 4
+    enable_compression: true
+    compression_level: 6
+
+  # Advanced Mac M3 optimizations
+  system_optimization:
+    platform: "mac_m3_max"
+    memory_management:
+      max_memory_usage_gb: 20
+      memory_cleanup_interval: 300
+      gc_threshold: 0.8
+      enable_memory_profiling: false
+      use_memory_mapped_files: true
+
+    cpu_optimization:
+      max_cpu_threads: 8
+      enable_cpu_affinity: true
+      performance_cores_only: true
+      enable_turbo_boost: true
+      thermal_throttling_threshold: 85
+
+    cache_settings:
+      model_cache_size_gb: 8
+      response_cache_ttl: 3600
+      enable_redis_cache: true
+      cache_compression: true
+
+  chat_engine:
+    model_root: "models"
+    handler_search_path:
+      - "src/handlers"
+
+    # Advanced performance monitoring
+    monitoring:
+      enable_metrics: true
+      metrics_port: 8283
+      enable_profiling: false
+      profile_interval: 60
+      enable_tracing: false
+      trace_sample_rate: 0.1
+
+    # Request handling optimization
+    request_handling:
+      max_concurrent_requests: 10
+      request_queue_size: 50
+      timeout_seconds: 120
+      retry_attempts: 3
+      backoff_multiplier: 2.0
+
+    handler_configs:
+      # Real-time communication client
+      RtcClient:
+        module: client/rtc_client/client_handler_rtc
+        buffer_size: 8192
+        max_connections: 20
+        heartbeat_interval: 30
+        connection_timeout: 60
+
+      # Advanced VAD with Mac M3 optimization
+      SileroVad:
+        module: vad/silerovad/vad_handler_silero
+        # Core VAD settings
+        speaking_threshold: 0.4
+        start_delay: 1024
+        end_delay: 3000
+        buffer_look_back: 3000
+        speech_padding: 256
+
+        # Mac M3 specific optimizations
+        use_cpu: true
+        num_threads: 4
+        enable_onnx_optimization: true
+        batch_size: 1
+
+        # Advanced VAD features
+        noise_suppression: true
+        noise_threshold: 0.1
+        adaptive_threshold: true
+        voice_activity_smoothing: true
+        min_speech_duration_ms: 100
+        max_silence_duration_ms: 2000
+
+        # Performance tuning
+        frame_size: 512
+        hop_length: 256
+        sample_rate: 16000
+        enable_preprocessing: true
+
+      # Enhanced ASR with SenseVoice
+      SenseVoice:
+        enabled: True
+        module: asr/sensevoice/asr_handler_sensevoice
+        model_name: "iic/SenseVoiceSmall"
+
+        # Mac M3 optimization
+        device: "cpu"
+        num_threads: 6
+        batch_size: 1
+        use_fp16: false
+        enable_cache: true
+
+        # Advanced ASR settings
+        language: "auto"
+        enable_punctuation: true
+        enable_inverse_text_normalization: true
+        enable_speaker_diarization: false
+        max_audio_length_seconds: 30
+
+        # Quality settings
+        beam_size: 5
+        best_of: 5
+        temperature: 0.0
+        compression_ratio_threshold: 2.4
+        log_prob_threshold: -1.0
+        no_speech_threshold: 0.6
+
+        # Performance optimization
+        chunk_length: 30
+        enable_vad: true
+        vad_onset: 0.500
+        vad_offset: 0.363
+
+      # Optimized TTS with EdgeTTS
+      EdgeTTS:
+        enabled: True
+        module: tts/edgetts/tts_handler_edgetts
+        voice: "en-US-JennyNeural"
+
+        # Voice settings
+        speaking_rate: "+0%"
+        speaking_pitch: "+0Hz"
+        speaking_volume: "+0%"
+
+        # Mac M3 optimization
+        enable_streaming: true
+        buffer_size: 4096
+        output_format: "audio-24khz-48kbitrate-mono-mp3"
+
+        # Advanced TTS features
+        enable_ssml: true
+        prosody_rate: "medium"
+        prosody_pitch: "medium"
+        prosody_volume: "medium"
+
+        # Performance settings
+        connection_timeout: 10
+        read_timeout: 30
+        max_retries: 3
+        cache_enabled: true
+        cache_ttl: 3600
+
+      # Advanced LLM configuration with OpenAI compatibility
+      LLMOpenAICompatible:
+        enabled: True
+        module: llm/openai_compatible/llm_handler_openai_compatible
+        model_name: "gpt-3.5-turbo"
+
+        # Core LLM settings
+        enable_video_input: false
+        history_length: 25
+        max_tokens: 1000
+        temperature: 0.7
+        top_p: 0.95
+        frequency_penalty: 0.0
+        presence_penalty: 0.0
+
+        # System prompt optimization for Mac M3
+        system_prompt: |
+          You are an AI assistant optimized for Mac M3 Max performance.
+          You provide helpful, accurate, and engaging responses while being mindful of computational efficiency.
+          Keep responses conversational yet informative, and avoid unnecessarily long outputs.
+          Focus on being helpful while maintaining optimal performance on Apple Silicon hardware.
+
+        # API configuration
+        api_url: "https://api.openai.com/v1"
+        # api_key: "" # Set via environment variable OPENAI_API_KEY
+
+        # Advanced request handling
+        request_timeout: 45
+        max_retries: 3
+        backoff_factor: 1.5
+        enable_streaming: true
+        stream_chunk_size: 1024
+
+        # Mac M3 specific optimizations
+        enable_response_caching: true
+        cache_ttl: 1800
+        enable_request_batching: false
+        batch_size: 1
+
+        # Content filtering and safety
+        enable_content_filter: true
+        max_response_length: 2000
+        enable_toxicity_detection: false
+
+        # Performance monitoring
+        enable_latency_tracking: true
+        enable_token_counting: true
+        log_api_usage: true
+
+      # Highly optimized Avatar rendering for Mac M3
+      LiteAvatar:
+        module: avatar/liteavatar/avatar_handler_liteavatar
+        avatar_name: 20250408/sample_data
+
+        # Core rendering settings
+        fps: 20
+        target_fps: 20
+        max_fps: 25
+        min_fps: 15
+        adaptive_fps: true
+
+        # Mac M3 optimization flags
+        debug: false
+        enable_fast_mode: true
+        use_gpu: false
+        use_cpu: true
+        enable_multi_threading: true
+        num_workers: 6
+
+        # Memory optimization
+        memory_efficient: true
+        low_memory_mode: true
+        enable_memory_pool: true
+        max_memory_usage_mb: 4096
+
+        # Processing optimization
+        batch_inference: false
+        batch_size: 1
+        enable_frame_skipping: true
+        frame_skip_threshold: 2
+
+        # Quality vs performance balance
+        render_quality: "balanced"  # options: low, balanced, high
+        enable_upscaling: false
+        upscale_factor: 1.0
+
+        # Advanced features
+        enable_face_tracking: true
+        face_tracking_smoothing: 0.8
+        enable_emotion_mapping: true
+        emotion_intensity: 0.7
+
+        # Audio-visual synchronization
+        lip_sync_enabled: true
+        lip_sync_strength: 0.9
+        audio_visual_offset_ms: 50
+        sync_tolerance_ms: 100
+
+        # Caching and preloading
+        enable_model_caching: true
+        preload_models: true
+        cache_size_mb: 2048
+        model_warmup: true
+
+        # Performance monitoring
+        enable_performance_metrics: true
+        log_frame_times: false
+        log_memory_usage: false
+        performance_warning_threshold_ms: 100
+
+        # Error handling and recovery
+        enable_graceful_degradation: true
+        fallback_fps: 15
+        max_consecutive_errors: 5
+        error_recovery_delay_ms: 1000
+
+        # Threading and concurrency
+        thread_pool_size: 4
+        max_concurrent_renders: 2
+        render_queue_size: 10
+
+        # Platform-specific Mac M3 settings
+        mac_m3_optimizations:
+          use_performance_cores: true
+          enable_neural_engine: false
+          optimize_for_battery: false
+          thermal_management: true
+          memory_pressure_handling: true
+
+        # Experimental features (use with caution)
+        experimental:
+          enable_frame_interpolation: false
+          enable_super_resolution: false
+          enable_real_time_denoising: false
+          enable_adaptive_quality: true

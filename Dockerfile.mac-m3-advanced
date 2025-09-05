@@ -1,0 +1,414 @@
+# Advanced Multi-stage Mac M3 Max Optimized Dockerfile
+# OpenAvatarChat - Enhanced Performance and Build Efficiency
+FROM python:3.11-slim as base-builder
+
+LABEL authors="HumanAIGC-Engineering"
+LABEL description="Mac M3 Max advanced optimized build with multi-stage approach"
+LABEL version="2.0"
+
+# Build arguments
+ARG CONFIG_FILE=config/chat_with_minicpm_mac_m3.yaml
+ARG WORK_DIR=/root/open-avatar-chat
+ARG PYTHON_VERSION=3.11
+ARG UV_VERSION=0.4.29
+
+# Environment variables for build optimization
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PIP_NO_CACHE_DIR=1
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# System dependencies installation with advanced caching
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+    build-essential=12.9ubuntu3 \
+    cmake=3.22.1-1ubuntu1.22.04.1 \
+    git=1:2.34.1-1ubuntu1.11 \
+    curl=7.81.0-1ubuntu1.18 \
+    wget=1.21.2-2ubuntu1 \
+    libgl1=1.4.0-1 \
+    libglib2.0-0=2.72.4-0ubuntu2.3 \
+    libsm6=2:1.2.3-1build2 \
+    libxext6=2:1.3.4-1build1 \
+    libxrender-dev=1:0.9.10-1build4 \
+    libgomp1=12.3.0-1ubuntu1~22.04 \
+    libgcc-s1=12.3.0-1ubuntu1~22.04 \
+    libc6-dev=2.35-0ubuntu3.8 \
+    pkg-config=0.29.2-1ubuntu3 \
+    ca-certificates=20230311ubuntu0.22.04.1 \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* \
+    && rm -rf /tmp/* /var/tmp/*
+
+# Install UV package manager with caching
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --no-deps uv==${UV_VERSION}
+
+WORKDIR ${WORK_DIR}
+
+# ========================= DEPENDENCY STAGE =========================
+FROM base-builder as dependency-builder
+
+# Mac M3 specific environment optimizations
+ENV PYTORCH_ENABLE_MPS_FALLBACK=1
+ENV PYTORCH_MPS_HIGH_WATERMARK_RATIO=0.0
+ENV FLASH_ATTENTION_FORCE_FALLBACK=1
+ENV TRANSFORMERS_NO_FLASH_ATTENTION=1
+ENV DISABLE_FLASH_ATTN=1
+ENV ACCELERATE_USE_CPU=1
+
+# CPU threading optimizations for M3
+ENV OMP_NUM_THREADS=8
+ENV MKL_NUM_THREADS=8
+ENV VECLIB_MAXIMUM_THREADS=8
+ENV NUMEXPR_NUM_THREADS=8
+ENV OPENBLAS_NUM_THREADS=8
+
+# Memory management
+ENV MALLOC_ARENA_MAX=4
+ENV PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:512
+
+# Copy dependency files first for better layer caching
+COPY ./pyproject.mac-m3.toml ${WORK_DIR}/pyproject.toml
+COPY ./install.py ${WORK_DIR}/install.py
+
+# Create virtual environment with enhanced settings
+RUN uv venv --python ${PYTHON_VERSION} \
+    --seed \
+    --relocatable \
+    .venv
+
+# Activate virtual environment for subsequent commands
+ENV PATH="${WORK_DIR}/.venv/bin:$PATH"
+ENV VIRTUAL_ENV="${WORK_DIR}/.venv"
+
+# Install core dependencies with advanced caching and optimization
+RUN --mount=type=cache,target=/root/.cache/uv \
+    --mount=type=cache,target=/root/.cache/pip \
+    uv sync \
+    --no-install-workspace \
+    --index-strategy unsafe-best-match \
+    --compile-bytecode \
+    --no-progress \
+    --frozen
+
+# ========================= APPLICATION STAGE =========================
+FROM base-builder as app-builder
+
+# Copy virtual environment from dependency stage
+COPY --from=dependency-builder ${WORK_DIR}/.venv ${WORK_DIR}/.venv
+
+# Set environment for application
+ENV PATH="${WORK_DIR}/.venv/bin:$PATH"
+ENV VIRTUAL_ENV="${WORK_DIR}/.venv"
+
+# Copy third-party dependencies
+COPY ./src/third_party ${WORK_DIR}/src/third_party
+
+# Copy source code with optimized layer ordering
+COPY ./src ${WORK_DIR}/src
+COPY ./scripts ${WORK_DIR}/scripts
+
+# Copy and process config file
+COPY ${CONFIG_FILE} /tmp/build_config.yaml
+
+# Mac M3 specific pyproject.toml optimizations with error handling
+RUN set -e; \
+    # Backup original files
+    cp src/handlers/llm/minicpm/pyproject.toml src/handlers/llm/minicpm/pyproject.toml.backup 2>/dev/null || true; \
+    cp src/handlers/avatar/liteavatar/pyproject.toml src/handlers/avatar/liteavatar/pyproject.toml.backup 2>/dev/null || true; \
+    \
+    # Create optimized MiniCPM pyproject.toml
+    cat > src/handlers/llm/minicpm/pyproject.toml << 'EOF'
+[project]
+name = "minicpm"
+version = "0.1.0"
+requires-python = ">=3.10, <3.13"
+dependencies = [
+    "onnxruntime>=1.20.1,<1.21.0",
+    "transformers>=4.44.0,<4.45.0",
+    "torch>=2.4.0,<2.5.0",
+    "accelerate>=0.30.0",
+]
+EOF
+    \
+    # Create optimized LiteAvatar pyproject.toml
+    cat > src/handlers/avatar/liteavatar/pyproject.toml << 'EOF'
+[project]
+name = "liteavatar"
+version = "0.1.0"
+requires-python = ">=3.10, <3.13"
+dependencies = [
+    "funasr>=1.2.3,<1.3.0",
+    "h5py>=3.12.1,<3.13.0",
+    "jieba>=0.42.1,<0.43.0",
+    "pillow>=11.1.0,<12.0.0",
+    "pydub>=0.25.1,<0.26.0",
+    "pypinyin>=0.53.0,<0.54.0",
+    "transformers==4.44.1",
+    "typeguard==2.13.3",
+    "vector-quantize-pytorch>=1.21.7,<1.22.0",
+    "vocos>=0.1.0,<0.2.0",
+    "onnxruntime>=1.20.1,<1.21.0",
+]
+EOF
+
+# Advanced MiniCPM handler optimizations
+RUN set -e; \
+    # Enhanced model path handling with validation
+    sed -i '/model_path = os.path.join(project_dir, engine_config.model_root, model_name)/c\
+        # Advanced model path resolution with validation\
+        if "/" in model_name and not os.path.exists(os.path.join(project_dir, engine_config.model_root, model_name)):\
+            logger.info(f"Treating as Hugging Face model ID: {model_name}")\
+            model_path = model_name  # Use HF model ID directly\
+        elif os.path.isabs(model_name):\
+            model_path = model_name  # Absolute path\
+        else:\
+            model_path = os.path.join(project_dir, engine_config.model_root, model_name)' \
+    src/handlers/llm/minicpm/llm_handler_minicpm.py; \
+    \
+    # Enhanced attention implementation with fallback
+    sed -i 's/attn_implementation='\''sdpa'\''/attn_implementation=getattr(handler_config, "attn_implementation", "eager")/' \
+    src/handlers/llm/minicpm/llm_handler_minicpm.py; \
+    \
+    # Add comprehensive Mac M3 parameters
+    sed -i '/skip_video_frame: int = Field(default=-1)/a\
+    # Mac M3 Max Optimization Parameters\
+    attn_implementation: str = Field(default="eager", description="Attention implementation: eager, sdpa, flash_attention_2")\
+    trust_remote_code: bool = Field(default=True, description="Trust remote code for model loading")\
+    device: str = Field(default="cpu", description="Device to use: cpu, mps, cuda")\
+    torch_dtype: str = Field(default="float32", description="Torch dtype: float32, float16, bfloat16")\
+    low_cpu_mem_usage: bool = Field(default=True, description="Enable low CPU memory usage")\
+    max_memory_gb: int = Field(default=16, description="Maximum memory usage in GB")\
+    batch_size: int = Field(default=1, description="Batch size for inference")\
+    num_threads: int = Field(default=8, description="Number of CPU threads")\
+    use_cache: bool = Field(default=True, description="Use KV cache")\
+    do_sample: bool = Field(default=True, description="Use sampling")\
+    temperature: float = Field(default=0.7, description="Sampling temperature")\
+    top_p: float = Field(default=0.95, description="Top-p sampling")\
+    top_k: int = Field(default=50, description="Top-k sampling")\
+    repetition_penalty: float = Field(default=1.1, description="Repetition penalty")\
+    pad_token_id: Optional[int] = Field(default=None, description="Padding token ID")\
+    eos_token_id: Optional[int] = Field(default=None, description="End of sequence token ID")\
+    max_new_tokens: int = Field(default=512, description="Maximum new tokens to generate")\
+    min_length: int = Field(default=1, description="Minimum generation length")\
+    early_stopping: bool = Field(default=True, description="Enable early stopping")' \
+    src/handlers/llm/minicpm/llm_handler_minicpm.py
+
+# Execute installation scripts with enhanced error handling
+RUN set -e; \
+    chmod +x ${WORK_DIR}/scripts/pre_config_install.sh; \
+    timeout 600 ${WORK_DIR}/scripts/pre_config_install.sh --config /tmp/build_config.yaml || { \
+        echo "Pre-config install failed or timed out"; \
+        exit 1; \
+    }
+
+# Install config dependencies with retry mechanism
+RUN set -e; \
+    for attempt in 1 2 3; do \
+        echo "Installation attempt $attempt..."; \
+        if timeout 900 uv run install.py \
+            --config /tmp/build_config.yaml \
+            --uv \
+            --skip-core \
+            --verbose; then \
+            echo "Installation successful on attempt $attempt"; \
+            break; \
+        elif [ $attempt -eq 3 ]; then \
+            echo "Installation failed after 3 attempts"; \
+            exit 1; \
+        else \
+            echo "Installation attempt $attempt failed, retrying..."; \
+            sleep 30; \
+        fi; \
+    done
+
+# Execute post-config installation
+RUN set -e; \
+    chmod +x ${WORK_DIR}/scripts/post_config_install.sh; \
+    timeout 300 ${WORK_DIR}/scripts/post_config_install.sh --config /tmp/build_config.yaml || { \
+        echo "Post-config install failed or timed out"; \
+        exit 1; \
+    }
+
+# ========================= RUNTIME STAGE =========================
+FROM python:3.11-slim as runtime
+
+# Runtime labels
+LABEL maintainer="HumanAIGC-Engineering"
+LABEL version="2.0-advanced"
+LABEL description="Mac M3 Max optimized runtime with advanced multi-stage build"
+
+# Runtime environment variables
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV WORK_DIR=/root/open-avatar-chat
+
+# Mac M3 runtime optimizations
+ENV PYTORCH_ENABLE_MPS_FALLBACK=1
+ENV PYTORCH_MPS_HIGH_WATERMARK_RATIO=0.0
+ENV FLASH_ATTENTION_FORCE_FALLBACK=1
+ENV TRANSFORMERS_NO_FLASH_ATTENTION=1
+ENV DISABLE_FLASH_ATTN=1
+ENV ACCELERATE_USE_CPU=1
+
+# CPU and memory optimizations
+ENV OMP_NUM_THREADS=8
+ENV MKL_NUM_THREADS=8
+ENV VECLIB_MAXIMUM_THREADS=8
+ENV NUMEXPR_NUM_THREADS=8
+ENV OPENBLAS_NUM_THREADS=8
+ENV MALLOC_ARENA_MAX=4
+ENV PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:512
+
+# Install minimal runtime dependencies
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+    curl=7.81.0-1ubuntu1.18 \
+    libgl1=1.4.0-1 \
+    libglib2.0-0=2.72.4-0ubuntu2.3 \
+    libgomp1=12.3.0-1ubuntu1~22.04 \
+    ca-certificates=20230311ubuntu0.22.04.1 \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* \
+    && rm -rf /tmp/* /var/tmp/*
+
+WORKDIR ${WORK_DIR}
+
+# Copy application from builder stage
+COPY --from=app-builder ${WORK_DIR} ${WORK_DIR}
+
+# Copy configuration and resource files
+COPY ./config ${WORK_DIR}/config
+COPY ./resource ${WORK_DIR}/resource
+COPY ./.env* ${WORK_DIR}/
+
+# Create necessary directories with proper permissions
+RUN mkdir -p ${WORK_DIR}/models \
+    ${WORK_DIR}/logs \
+    ${WORK_DIR}/ssl_certs \
+    ${WORK_DIR}/temp \
+    && chmod 755 ${WORK_DIR}/models \
+    ${WORK_DIR}/logs \
+    ${WORK_DIR}/ssl_certs \
+    ${WORK_DIR}/temp
+
+# Set up virtual environment path
+ENV PATH="${WORK_DIR}/.venv/bin:$PATH"
+ENV VIRTUAL_ENV="${WORK_DIR}/.venv"
+
+# Create health check script
+RUN cat > /usr/local/bin/healthcheck.sh << 'EOF'
+#!/bin/bash
+set -e
+
+# Check if the service is responding
+if ! curl -f --max-time 10 --connect-timeout 5 http://localhost:8282/health 2>/dev/null; then
+    echo "Health check failed: service not responding"
+    exit 1
+fi
+
+# Check memory usage (should not exceed 90% of available)
+MEMORY_USAGE=$(ps -o pid,ppid,cmd,%mem --sort=-%mem | awk 'NR==2{print $4}' | cut -d'.' -f1)
+if [ "${MEMORY_USAGE:-0}" -gt 90 ]; then
+    echo "Health check warning: high memory usage (${MEMORY_USAGE}%)"
+fi
+
+# Check if Python processes are running
+if ! pgrep -f "python.*demo.py" > /dev/null; then
+    echo "Health check failed: main application not running"
+    exit 1
+fi
+
+echo "Health check passed"
+exit 0
+EOF
+
+RUN chmod +x /usr/local/bin/healthcheck.sh
+
+# Enhanced health check with better timing for Mac M3
+HEALTHCHECK --interval=45s --timeout=15s --start-period=120s --retries=3 \
+    CMD /usr/local/bin/healthcheck.sh
+
+# Create startup script with advanced optimizations
+RUN cat > /usr/local/bin/startup.sh << 'EOF'
+#!/bin/bash
+set -e
+
+echo "Starting OpenAvatarChat Mac M3 Advanced..."
+
+# Display system information
+echo "=== System Information ==="
+echo "Python version: $(python --version)"
+echo "CPU cores: $(nproc)"
+echo "Memory: $(free -h | grep '^Mem:' | awk '{print $2}' || echo 'N/A')"
+echo "Disk space: $(df -h ${WORK_DIR} | tail -1 | awk '{print $4}' || echo 'N/A')"
+echo "=========================="
+
+# Check for required directories
+for dir in models logs ssl_certs; do
+    if [ ! -d "${WORK_DIR}/${dir}" ]; then
+        echo "Creating missing directory: ${dir}"
+        mkdir -p "${WORK_DIR}/${dir}"
+    fi
+done
+
+# Check virtual environment
+if [ ! -f "${WORK_DIR}/.venv/bin/python" ]; then
+    echo "Error: Virtual environment not found"
+    exit 1
+fi
+
+# Validate configuration file
+CONFIG_FILE="${CONFIG_FILE:-config/chat_with_minicpm_mac_m3.yaml}"
+if [ ! -f "${WORK_DIR}/${CONFIG_FILE}" ]; then
+    echo "Warning: Config file ${CONFIG_FILE} not found, using default"
+    CONFIG_FILE="config/chat_with_minicpm_mac_m3.yaml"
+fi
+
+echo "Using configuration: ${CONFIG_FILE}"
+
+# Set memory limits based on available memory
+AVAILABLE_MEMORY=$(free -m 2>/dev/null | awk 'NR==2{printf "%.0f", $7/1024}' || echo "16")
+if [ "${AVAILABLE_MEMORY}" -lt 16 ]; then
+    echo "Warning: Low memory detected (${AVAILABLE_MEMORY}GB). Enabling low-memory mode."
+    export PYTORCH_MPS_HIGH_WATERMARK_RATIO=0.1
+    export OMP_NUM_THREADS=4
+    export MKL_NUM_THREADS=4
+fi
+
+# Start the application with optimized settings
+echo "Starting application..."
+exec uv run src/demo.py --config "${CONFIG_FILE}" "$@"
+EOF
+
+RUN chmod +x /usr/local/bin/startup.sh
+
+# Expose port
+EXPOSE 8282
+
+# Set default config file
+ENV CONFIG_FILE=config/chat_with_minicpm_mac_m3.yaml
+
+# Use startup script as entrypoint
+ENTRYPOINT ["/usr/local/bin/startup.sh"]
+
+# Default command (can be overridden)
+CMD []
+
+# Build metadata
+ARG BUILD_DATE
+ARG BUILD_VERSION
+ARG VCS_REF
+
+LABEL build.date="${BUILD_DATE}" \
+      build.version="${BUILD_VERSION}" \
+      build.vcs-ref="${VCS_REF}" \
+      build.docker-version="multi-stage-2.0" \
+      build.optimization-level="advanced"

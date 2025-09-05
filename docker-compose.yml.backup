@@ -1,0 +1,199 @@
+services:
+  # Ollama Service - Local AI Model Server
+  ollama:
+    image: ollama/ollama:0.11.7
+    profiles: [ollama] # only starts when you pass --profile ollama
+    container_name: ollama-server
+    mem_limit: 12g
+    ports:
+      - "11434:11434"
+    environment:
+      OLLAMA_HOST: 0.0.0.0
+      OLLAMA_NO_MMAP: 0
+      # Space-separated list to auto-pull on boot
+      OLLAMA_AUTOPULL: "qwen2.5vl nomic-embed-text"
+      READINESS_TIMEOUT: 120
+    volumes:
+      # PERSIST MODELS (named volume)
+      - ollama_data:/root/.ollama
+      # Entrypoint script
+      - ./ollama-entrypoint.sh:/ollama-entrypoint.sh:ro
+    entrypoint: ["/bin/sh", "/ollama-entrypoint.sh"]
+    healthcheck:
+      test: ["CMD-SHELL", "ollama list >/dev/null 2>&1 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 120s
+    networks:
+      - avatar-network
+    restart: unless-stopped
+
+  # OpenAvatarChat - OpenAI Version
+  open-avatar-chat-openai:
+    build:
+      context: .
+      dockerfile: Dockerfile.mac-m3-lite
+      args:
+        CONFIG_FILE: config/chat_with_openai_mac_m3_simple.yaml
+    container_name: open-avatar-chat-openai
+    profiles: [openai] # only starts when you pass --profile openai
+    platform: linux/arm64
+    ports:
+      - "8282:8282"
+    environment:
+      # OpenAI Configuration
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      # Mac M3 Optimizations
+      PYTORCH_ENABLE_MPS_FALLBACK: 1
+      PYTORCH_MPS_HIGH_WATERMARK_RATIO: 0.0
+      OMP_NUM_THREADS: 8
+      MKL_NUM_THREADS: 8
+      VECLIB_MAXIMUM_THREADS: 8
+      NUMEXPR_NUM_THREADS: 8
+      ACCELERATE_USE_CPU: 1
+      # Memory Management
+      PYTORCH_CUDA_ALLOC_CONF: max_split_size_mb:512
+      MALLOC_ARENA_MAX: 4
+    volumes:
+      - ./models:/root/open-avatar-chat/models
+      - ./resource:/root/open-avatar-chat/resource
+      - ./ssl_certs:/root/open-avatar-chat/ssl_certs
+      - ./logs:/root/open-avatar-chat/logs
+      - ./temp_openai_config.yaml:/root/open-avatar-chat/config/temp_openai_config.yaml:ro
+    deploy:
+      resources:
+        limits:
+          memory: 16G
+          cpus: "8.0"
+        reservations:
+          memory: 8G
+          cpus: "4.0"
+    healthcheck:
+      test: ["CMD", "curl", "-k", "-f", "https://localhost:8282/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - avatar-network
+    restart: unless-stopped
+    entrypoint: []
+    command:
+      [
+        "/bin/bash",
+        "-c",
+        "cd /root/open-avatar-chat && uv run src/demo.py --config config/temp_openai_config.yaml",
+      ]
+
+  # OpenAvatarChat - Ollama Version
+  open-avatar-chat-ollama:
+    build:
+      context: .
+      dockerfile: Dockerfile.mac-m3-lite
+      args:
+        CONFIG_FILE: config/chat_with_ollama_mac_m3.yaml
+    container_name: open-avatar-chat-ollama
+    profiles: [ollama] # only starts when you pass --profile ollama
+    platform: linux/arm64
+    ports:
+      - "8283:8282"
+    environment:
+      # Mac M3 Optimizations
+      PYTORCH_ENABLE_MPS_FALLBACK: 1
+      PYTORCH_MPS_HIGH_WATERMARK_RATIO: 0.0
+      OMP_NUM_THREADS: 8
+      MKL_NUM_THREADS: 8
+      VECLIB_MAXIMUM_THREADS: 8
+      NUMEXPR_NUM_THREADS: 8
+      ACCELERATE_USE_CPU: 1
+      # Memory Management
+      PYTORCH_CUDA_ALLOC_CONF: max_split_size_mb:512
+      MALLOC_ARENA_MAX: 4
+    volumes:
+      - ./models:/root/open-avatar-chat/models
+      - ./resource:/root/open-avatar-chat/resource
+      - ./ssl_certs:/root/open-avatar-chat/ssl_certs
+      - ./logs:/root/open-avatar-chat/logs
+      - ./config/chat_with_ollama_mac_m3.yaml:/root/open-avatar-chat/config/chat_with_ollama_mac_m3.yaml:ro
+    deploy:
+      resources:
+        limits:
+          memory: 16G
+          cpus: "8.0"
+        reservations:
+          memory: 8G
+          cpus: "4.0"
+    healthcheck:
+      test: ["CMD", "curl", "-k", "-f", "https://localhost:8282/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - avatar-network
+    depends_on:
+      ollama:
+        condition: service_healthy
+    restart: unless-stopped
+    entrypoint: []
+    command:
+      [
+        "/bin/bash",
+        "-c",
+        "cd /root/open-avatar-chat && uv run src/demo.py --config config/chat_with_ollama_mac_m3.yaml",
+      ]
+
+  # Redis Cache (Optional - for performance)
+  redis:
+    image: redis:7-alpine
+    container_name: avatar-redis
+    profiles: [cache, ollama, openai] # available for all profiles
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --maxmemory 1gb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - avatar-network
+    restart: unless-stopped
+
+  # Nginx Reverse Proxy (Optional - for production)
+  nginx:
+    image: nginx:alpine
+    container_name: avatar-nginx
+    profiles: [production] # only for production setup
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl_certs:/etc/nginx/ssl:ro
+    depends_on:
+      - open-avatar-chat-openai
+      - open-avatar-chat-ollama
+    networks:
+      - avatar-network
+    restart: unless-stopped
+
+# Volumes
+volumes:
+  ollama_data:
+    driver: local
+  redis_data:
+    driver: local
+
+# Networks
+networks:
+  avatar-network:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.25.0.0/16
+          gateway: 172.25.0.1

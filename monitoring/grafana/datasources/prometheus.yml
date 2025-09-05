@@ -1,0 +1,81 @@
+# Grafana Datasource Configuration for Mac M3 OpenAvatarChat
+# Prometheus datasource with optimized settings for Apple Silicon monitoring
+
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    version: 1
+    editable: true
+    basicAuth: false
+    withCredentials: false
+    jsonData:
+      httpMethod: POST
+      queryTimeout: 60s
+      timeInterval: 15s
+      exemplarTraceIdDestinations:
+        - name: trace_id
+          datasourceUid: jaeger
+      # Custom headers for Mac M3 monitoring
+      customQueryParameters: 'step=15s'
+      # Enable query caching for better performance on Mac M3
+      cacheLevel: 'High'
+      incrementalQuerying: true
+      incrementalQueryOverlapWindow: 10m
+      disableMetricsLookup: false
+      prometheusType: Prometheus
+      prometheusVersion: 2.40.0
+      # Mac M3 specific query optimizations
+      defaultEditor: code
+      disableRecordingRules: false
+      # Exemplars configuration
+      exemplarTraceIdDestinations:
+        - name: traceID
+          url: http://jaeger:16686/trace/{}
+    secureJsonFields: {}
+    uid: prometheus-mac-m3
+
+  # Optional: Additional Prometheus instance for historical data
+  - name: Prometheus-Historical
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: false
+    version: 1
+    editable: false
+    basicAuth: false
+    withCredentials: false
+    jsonData:
+      httpMethod: GET
+      queryTimeout: 300s
+      timeInterval: 1m
+      # Historical data settings
+      customQueryParameters: 'step=1m'
+      cacheLevel: 'Medium'
+      incrementalQuerying: false
+    uid: prometheus-historical-mac-m3
+
+  # TestData datasource for development
+  - name: TestData
+    type: testdata
+    access: proxy
+    isDefault: false
+    version: 1
+    editable: true
+    jsonData:
+      # Test scenarios for Mac M3 performance testing
+      scenarios:
+        - id: mac_m3_cpu_load
+          name: Mac M3 CPU Load Simulation
+          description: Simulates CPU load patterns on Mac M3
+        - id: mac_m3_memory_usage
+          name: Mac M3 Memory Usage
+          description: Simulates memory usage patterns on Mac M3
+        - id: inference_latency
+          name: Inference Latency
+          description: Simulates AI model inference latency
+    uid: testdata-mac-m3

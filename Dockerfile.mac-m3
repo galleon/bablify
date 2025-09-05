@@ -1,0 +1,140 @@
+FROM python:3.11-slim
+
+LABEL authors="HumanAIGC-Engineering"
+LABEL description="Mac M3 Max optimized build"
+
+ARG CONFIG_FILE=config/chat_with_minicpm.yaml
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PYTORCH_ENABLE_MPS_FALLBACK=1
+ENV PYTORCH_MPS_HIGH_WATERMARK_RATIO=0.0
+ENV FLASH_ATTENTION_FORCE_FALLBACK=1
+ENV TRANSFORMERS_NO_FLASH_ATTENTION=1
+ENV DISABLE_FLASH_ATTN=1
+
+# Install system dependencies for Mac M3 compatibility
+RUN apt-get update && \
+    apt-get install -y \
+    build-essential \
+    cmake \
+    git \
+    curl \
+    wget \
+    libgl1 \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender-dev \
+    libgomp1 \
+    libgcc-s1 \
+    libc6-dev \
+    pkg-config \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set up Python environment
+RUN python3 -m pip install --upgrade pip
+
+ARG WORK_DIR=/root/open-avatar-chat
+WORKDIR $WORK_DIR
+
+# Install UV package manager
+RUN pip install uv
+
+# Copy dependency files
+COPY ./pyproject.mac-m3.toml $WORK_DIR/pyproject.toml
+COPY ./install.py $WORK_DIR/install.py
+COPY ./src/third_party $WORK_DIR/src/third_party
+
+# Create and configure virtual environment for Mac M3
+RUN uv venv --python 3.11 && \
+    echo 'source .venv/bin/activate' >> ~/.bashrc
+
+# Install core dependencies with Mac M3 optimizations
+RUN uv sync --no-install-workspace --index-strategy unsafe-best-match
+
+# Skip flash_attn installation - will use alternative model (Option A)
+
+# Copy source files
+ADD ./src $WORK_DIR/src
+ADD ./scripts $WORK_DIR/scripts
+
+# Copy and process config file
+COPY $CONFIG_FILE /tmp/build_config.yaml
+RUN echo "Using config file for Mac M3: ${CONFIG_FILE}"
+
+# Replace MiniCPM pyproject.toml with Mac M3 version (removes onnxruntime-gpu)
+RUN cp src/handlers/llm/minicpm/pyproject.toml src/handlers/llm/minicpm/pyproject.toml.original && \
+    echo '[project]' > src/handlers/llm/minicpm/pyproject.toml && \
+    echo 'name = "minicpm"' >> src/handlers/llm/minicpm/pyproject.toml && \
+    echo 'version = "0.1.0"' >> src/handlers/llm/minicpm/pyproject.toml && \
+    echo 'requires-python = ">=3.10, <3.13"' >> src/handlers/llm/minicpm/pyproject.toml && \
+    echo 'dependencies = [' >> src/handlers/llm/minicpm/pyproject.toml && \
+    echo '    "onnxruntime~=1.20.1"' >> src/handlers/llm/minicpm/pyproject.toml && \
+    echo ']' >> src/handlers/llm/minicpm/pyproject.toml
+
+# Replace LiteAvatar pyproject.toml with Mac M3 version (removes onnxruntime-gpu)
+RUN cp src/handlers/avatar/liteavatar/pyproject.toml src/handlers/avatar/liteavatar/pyproject.toml.original && \
+    echo '[project]' > src/handlers/avatar/liteavatar/pyproject.toml && \
+    echo 'name = "liteavatar"' >> src/handlers/avatar/liteavatar/pyproject.toml && \
+    echo 'version = "0.1.0"' >> src/handlers/avatar/liteavatar/pyproject.toml && \
+    echo 'requires-python = ">=3.10, <3.13"' >> src/handlers/avatar/liteavatar/pyproject.toml && \
+    echo 'dependencies = [' >> src/handlers/avatar/liteavatar/pyproject.toml && \
+    echo '    "funasr~=1.2.3",' >> src/handlers/avatar/liteavatar/pyproject.toml && \
+    echo '    "h5py~=3.12.1",' >> src/handlers/avatar/liteavatar/pyproject.toml && \
+    echo '    "jieba~=0.42.1",' >> src/handlers/avatar/liteavatar/pyproject.toml && \
+    echo '    "pillow~=11.1.0",' >> src/handlers/avatar/liteavatar/pyproject.toml && \
+    echo '    "pydub~=0.25.1",' >> src/handlers/avatar/liteavatar/pyproject.toml && \
+    echo '    "pypinyin~=0.53.0",' >> src/handlers/avatar/liteavatar/pyproject.toml && \
+    echo '    "transformers==4.44.1",' >> src/handlers/avatar/liteavatar/pyproject.toml && \
+    echo '    "typeguard==2.13.3",' >> src/handlers/avatar/liteavatar/pyproject.toml && \
+    echo '    "vector-quantize-pytorch~=1.21.7",' >> src/handlers/avatar/liteavatar/pyproject.toml && \
+    echo '    "vocos~=0.1.0",' >> src/handlers/avatar/liteavatar/pyproject.toml && \
+    echo '    "onnxruntime~=1.20.1"' >> src/handlers/avatar/liteavatar/pyproject.toml && \
+    echo ']' >> src/handlers/avatar/liteavatar/pyproject.toml
+
+# Patch MiniCPM handler to handle Hugging Face model IDs properly
+RUN sed -i '/model_path = os.path.join(project_dir, engine_config.model_root, model_name)/c\        # Check if model_name is a Hugging Face model ID (contains /)\n        if "/" in model_name:\n            model_path = model_name  # Use HF model ID directly\n        else:\n            model_path = os.path.join(project_dir, engine_config.model_root, model_name)' \
+    src/handlers/llm/minicpm/llm_handler_minicpm.py
+
+# Patch MiniCPM handler to use attn_implementation from config and avoid flash_attn
+RUN sed -i 's/attn_implementation='\''sdpa'\''/attn_implementation=getattr(handler_config, "attn_implementation", "eager")/' \
+    src/handlers/llm/minicpm/llm_handler_minicpm.py
+
+# Add Mac M3 parameters to MiniCPMConfig class
+RUN sed -i '/skip_video_frame: int = Field(default=-1)/a\    attn_implementation: str = Field(default="eager")\n    trust_remote_code: bool = Field(default=True)\n    device: str = Field(default="cpu")\n    torch_dtype: str = Field(default="float32")\n    low_cpu_mem_usage: bool = Field(default=True)\n    max_memory_gb: int = Field(default=16)\n    batch_size: int = Field(default=1)\n    num_threads: int = Field(default=8)' \
+    src/handlers/llm/minicpm/llm_handler_minicpm.py
+
+# Execute pre-config installation script
+RUN chmod +x $WORK_DIR/scripts/pre_config_install.sh && \
+    $WORK_DIR/scripts/pre_config_install.sh --config /tmp/build_config.yaml
+
+# Install config dependencies with Mac optimizations
+RUN uv run install.py \
+    --config /tmp/build_config.yaml \
+    --uv \
+    --skip-core
+
+# Execute post-config installation script
+RUN chmod +x $WORK_DIR/scripts/post_config_install.sh && \
+    $WORK_DIR/scripts/post_config_install.sh --config /tmp/build_config.yaml
+
+# Copy remaining files
+ADD ./config $WORK_DIR/config
+ADD ./resource $WORK_DIR/resource
+ADD ./.env* $WORK_DIR/
+
+# Clean up build config
+RUN rm /tmp/build_config.yaml
+
+# Set working directory
+WORKDIR $WORK_DIR
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:8282/health || exit 1
+
+# Expose port
+EXPOSE 8282
+
+# Entry point optimized for Mac M3 with OpenAI compatible config
+ENTRYPOINT ["uv", "run", "src/demo.py", "--config", "config/chat_with_minicpm_mac_m3.yaml"]

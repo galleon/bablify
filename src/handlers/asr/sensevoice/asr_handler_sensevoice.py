@@ -54,7 +54,7 @@ class HandlerASR(HandlerBase, ABC):
 
         if torch.cuda.is_available():
             self.device = torch.device("cuda:0")
-        elif torch.mps.is_available():
+        elif hasattr(torch, 'mps') and hasattr(torch.mps, 'is_available') and torch.mps.is_available():
             self.device = torch.device("mps")
         else:
             self.device = torch.device("cpu")
@@ -96,7 +96,7 @@ class HandlerASR(HandlerBase, ABC):
         context = ASRContext(session_context.session_info.session_id)
         context.shared_states = session_context.shared_states
         return context
-    
+
     def start_context(self, session_context, handler_context):
         pass
 

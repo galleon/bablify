@@ -1,0 +1,71 @@
+# Grafana Dashboard Provisioning Configuration for Mac M3 OpenAvatarChat
+# Automatically provisions dashboards for Apple Silicon performance monitoring
+
+apiVersion: 1
+
+providers:
+  # Main dashboards provider
+  - name: 'mac-m3-dashboards'
+    orgId: 1
+    folder: 'Mac M3 Avatar Chat'
+    type: file
+    disableDeletion: true
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/provisioning/dashboards/json
+
+  # System performance dashboards
+  - name: 'system-performance'
+    orgId: 1
+    folder: 'System Performance'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 60
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/provisioning/dashboards/system
+
+  # Application specific dashboards
+  - name: 'application-metrics'
+    orgId: 1
+    folder: 'Application Metrics'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/provisioning/dashboards/app
+
+  # Infrastructure dashboards
+  - name: 'infrastructure'
+    orgId: 1
+    folder: 'Infrastructure'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 60
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/provisioning/dashboards/infra
+
+  # Development and debugging dashboards
+  - name: 'development'
+    orgId: 1
+    folder: 'Development'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/provisioning/dashboards/dev
+
+  # Alerts and SLA dashboards
+  - name: 'alerts-sla'
+    orgId: 1
+    folder: 'Alerts & SLA'
+    type: file
+    disableDeletion: true
+    updateIntervalSeconds: 15
+    allowUiUpdates: false
+    options:
+      path: /etc/grafana/provisioning/dashboards/alerts

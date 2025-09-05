@@ -1,0 +1,175 @@
+# Prometheus Configuration for Mac M3 OpenAvatarChat Monitoring
+# Optimized for Apple Silicon performance monitoring
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'mac-m3-avatar-chat'
+    environment: 'development'
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+
+# Load rules once and periodically evaluate them according to the global 'evaluation_interval'
+rule_files:
+  - "rules/*.yml"
+
+# Scrape configuration
+scrape_configs:
+  # Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+    scrape_interval: 30s
+    metrics_path: /metrics
+
+  # OpenAvatarChat application metrics
+  - job_name: 'open-avatar-chat'
+    static_configs:
+      - targets: ['open-avatar-chat:8282']
+    scrape_interval: 10s
+    metrics_path: /metrics
+    honor_labels: true
+    params:
+      format: ['prometheus']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: open-avatar-chat:8282
+
+  # Docker container metrics via cAdvisor
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+    scrape_interval: 15s
+    metrics_path: /metrics
+
+  # Node/System metrics (Mac M3 specific)
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['host.docker.internal:9100']
+    scrape_interval: 15s
+    metrics_path: /metrics
+    relabel_configs:
+      - source_labels: [__address__]
+        regex: '.*'
+        target_label: mac_architecture
+        replacement: 'arm64'
+
+  # Redis metrics
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:6379']
+    scrape_interval: 30s
+    metrics_path: /metrics
+
+  # Nginx metrics
+  - job_name: 'nginx'
+    static_configs:
+      - targets: ['nginx:80']
+    scrape_interval: 30s
+    metrics_path: /nginx_status
+    honor_labels: true
+
+  # Custom application metrics for Mac M3 optimization
+  - job_name: 'mac-m3-performance'
+    static_configs:
+      - targets: ['open-avatar-chat:8283']
+    scrape_interval: 5s
+    metrics_path: /mac-m3/metrics
+    params:
+      collect[]:
+        - 'memory_usage'
+        - 'cpu_usage'
+        - 'inference_time'
+        - 'model_load_time'
+        - 'frame_processing_rate'
+        - 'gpu_memory_usage'
+        - 'thermal_state'
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'mac_m3_(.*)'
+        target_label: __name__
+        replacement: 'avatar_mac_m3_${1}'
+
+  # Health check endpoints
+  - job_name: 'health-checks'
+    static_configs:
+      - targets:
+          - 'open-avatar-chat:8282'
+          - 'redis:6379'
+          - 'prometheus:9090'
+    scrape_interval: 30s
+    metrics_path: /health
+    honor_labels: true
+    params:
+      format: ['json']
+
+# Recording rules for Mac M3 specific metrics
+recording_rules:
+  - name: mac_m3_performance_rules
+    interval: 30s
+    rules:
+      - record: avatar:cpu_utilization_rate
+        expr: |
+          (
+            1 - (
+              avg(rate(container_cpu_usage_seconds_total{name="open-avatar-chat-mac-m3-advanced"}[5m])) by (instance)
+              / on(instance) group_left
+              machine_cpu_cores
+            )
+          ) * 100
+
+      - record: avatar:memory_utilization_rate
+        expr: |
+          (
+            container_memory_usage_bytes{name="open-avatar-chat-mac-m3-advanced"}
+            / container_spec_memory_limit_bytes{name="open-avatar-chat-mac-m3-advanced"}
+          ) * 100
+
+      - record: avatar:inference_latency_p95
+        expr: |
+          histogram_quantile(0.95,
+            rate(avatar_inference_duration_seconds_bucket[5m])
+          )
+
+      - record: avatar:model_load_success_rate
+        expr: |
+          (
+            rate(avatar_model_loads_total{status="success"}[5m])
+            / rate(avatar_model_loads_total[5m])
+          ) * 100
+
+      - record: avatar:frame_processing_rate
+        expr: |
+          rate(avatar_frames_processed_total[1m])
+
+      - record: avatar:error_rate
+        expr: |
+          (
+            rate(avatar_requests_total{status="error"}[5m])
+            / rate(avatar_requests_total[5m])
+          ) * 100
+
+# Storage configuration optimized for Mac M3
+storage:
+  tsdb:
+    retention.time: 7d
+    retention.size: 10GB
+    wal-compression: true
+    head-chunks-write-queue-size: 10000
+
+# Remote write configuration (optional)
+# remote_write:
+#   - url: "https://your-remote-prometheus-endpoint/api/v1/write"
+#     queue_config:
+#       max_samples_per_send: 1000
+#       max_shards: 200
+#       capacity: 2500

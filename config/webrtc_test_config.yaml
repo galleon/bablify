@@ -1,0 +1,65 @@
+default:
+  logger:
+    log_level: "DEBUG"
+  service:
+    host: "0.0.0.0"
+    port: 8282
+    cert_file: "ssl_certs/localhost.crt"
+    cert_key: "ssl_certs/localhost.key"
+  chat_engine:
+    model_root: "models"
+    handler_search_path:
+      - "src/handlers"
+    handler_configs:
+      RtcClient:
+        module: client/rtc_client/client_handler_rtc
+        # Enhanced WebRTC debugging
+        debug: true
+        ice_servers:
+          - urls: "stun:stun.l.google.com:19302"
+          - urls: "stun:stun1.l.google.com:19302"
+        rtc_configuration:
+          iceServers:
+            - urls: "stun:stun.l.google.com:19302"
+            - urls: "stun:stun1.l.google.com:19302"
+          bundlePolicy: "balanced"
+          iceCandidatePoolSize: 10
+          iceTransportPolicy: "all"
+      SileroVad:
+        module: vad/silerovad/vad_handler_silero
+        speaking_threshold: 0.3
+        start_delay: 1024
+        end_delay: 3000
+        buffer_look_back: 3000
+        speech_padding: 256
+        use_cpu: true
+        num_threads: 2
+      SenseVoice:
+        enabled: False  # Disabled for WebRTC testing
+        module: asr/sensevoice/asr_handler_sensevoice
+        model_name: "iic/SenseVoiceSmall"
+      EdgeTTS:
+        enabled: True
+        module: tts/edgetts/tts_handler_edgetts
+        voice: "en-US-AriaNeural"
+        rate: "+10%"
+        volume: "+0%"
+      # Simple echo handler instead of LLM for testing
+      EchoLLM:
+        enabled: True
+        module: llm/echo/llm_handler_echo
+        system_prompt: "WebRTC Test Echo: "
+        delay_ms: 500
+        max_length: 200
+      LiteAvatar:
+        enabled: False  # Disabled for WebRTC testing
+        module: avatar/liteavatar/avatar_handler_liteavatar
+        avatar_name: 20250408/sample_data
+        fps: 15
+        debug: true
+        enable_fast_mode: true
+        use_gpu: false
+        num_workers: 2
+        memory_efficient: true
+        low_memory_mode: true
+        batch_inference: false
