@@ -20,7 +20,7 @@ from handlers.llm.openai_compatible.chat_history_manager import ChatHistory, His
 class LLMConfig(HandlerBaseConfigModel, BaseModel):
     model_name: str = Field(default="qwen-plus")
     system_prompt: str = Field(default="请你扮演一个 AI 助手，用简短的对话来回答用户的问题，并在对话内容中加入合适的标点符号，不需要加入标点符号相关的内容")
-    api_key: str = Field(default=os.getenv("DASHSCOPE_API_KEY"))
+    api_key: str = Field(default="")  # Always loaded from OPENAI_API_KEY environment variable
     api_url: str = Field(default=None)
     enable_video_input: bool = Field(default=False)
     history_length: int = Field(default=20)
@@ -76,8 +76,13 @@ class HandlerLLM(HandlerBase, ABC):
 
     def load(self, engine_config: ChatEngineConfigModel, handler_config: Optional[BaseModel] = None):
         if isinstance(handler_config, LLMConfig):
-            if handler_config.api_key is None or len(handler_config.api_key) == 0:
-                error_message = 'api_key is required in config/xxx.yaml, when use handler_llm'
+            # Always use API key from environment variable, ignore config value
+            env_key = os.getenv("OPENAI_API_KEY", "")
+            if env_key:
+                handler_config.api_key = env_key
+                logger.info("Using OPENAI_API_KEY from environment variable")
+            else:
+                error_message = 'OPENAI_API_KEY environment variable is required for OpenAI compatible LLM handler'
                 logger.error(error_message)
                 raise ValueError(error_message)
 
@@ -97,7 +102,7 @@ class HandlerLLM(HandlerBase, ABC):
             base_url=context.api_url,
         )
         return context
-    
+
     def start_context(self, session_context, handler_context):
         pass
 
@@ -129,7 +134,7 @@ class HandlerLLM(HandlerBase, ABC):
         if len(chat_text) < 1:
             return
         logger.info(f'llm input {context.model_name} {chat_text} ')
-        current_content = context.history.generate_next_messages(chat_text, 
+        current_content = context.history.generate_next_messages(chat_text,
                                                                  [context.current_image] if context.current_image is not None else [])
         logger.debug(f'llm input {context.model_name} {current_content} ')
         try:
@@ -162,7 +167,7 @@ class HandlerLLM(HandlerBase, ABC):
                 response = e.body
                 if isinstance(response, dict) and "message" in response:
                     response = f"{response['message']}"
-            output_text = response 
+            output_text = response
             output = DataBundle(output_definition)
             output.set_main_data(output_text)
             output.add_meta("avatar_text_end", False)
@@ -179,4 +184,3 @@ class HandlerLLM(HandlerBase, ABC):
 
     def destroy_context(self, context: HandlerContext):
         pass
-

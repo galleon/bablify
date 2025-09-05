@@ -39,7 +39,7 @@ default:
         history_length: 20
         system_prompt: "You are an AI assistant optimized for Mac M3. You provide helpful, accurate responses in a conversational manner. Keep responses concise and engaging."
         api_url: "https://api.openai.com/v1"
-        api_key: "" # Set your OpenAI API key here or via environment variable OPENAI_API_KEY
+
       LiteAvatar:
         enabled: false # Disabled to focus on WebRTC DataChannel testing
         module: avatar/liteavatar/avatar_handler_liteavatar

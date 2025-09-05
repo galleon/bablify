@@ -71,9 +71,9 @@ Original project credits go to the OpenAvatarChat team for creating this amazing
 - **模块化设计：使用模块化的设计，可以灵活地替换组件，实现不同功能组合。**
 
 
-## 📢 最新动态
+## 📢 Latest Updates
 
-### 更新日志
+### Changelog
 
 - [2025.08.19] ⭐️⭐️⭐️ 版本 0.5.1发布:
   - LiteAvatar支持单机多session，详见下文LiteAvatar配置部分
@@ -103,16 +103,16 @@ Original project credits go to the OpenAvatarChat team for creating this amazing
   - 模块化的实时交互对话数字人 
   - 支持MiniCPM-o作为多模态语言模型和云端的 api 两种调用方
 
-### 待办清单
+### To-Do List
 
-- [ ] 完善文档以及视频教程
-- [ ] 接入Live2D数字人
-- [ ] 接入3D数字人
+- [ ] Improve documentation and video tutorials
+- [ ] Integrate Live2D digital avatars
+- [ ] Integrate 3D digital avatars
 
 ## Demo
 
-### 在线体验
-我们部署在
+### Online Experience
+We have deployed demo services on
 <a href="https://www.modelscope.cn/studios/HumanAIGC-Engineering/open-avatar-chat" target="_blank" style="display: inline-block; vertical-align: middle;">
     <img alt="Static Badge" style="height: 10px; margin-right: 1px;" src="./assets/images/modelscope_logo.png">
 ModelScope
@@ -122,9 +122,9 @@ ModelScope
     🤗
 HuggingFace
  </a>
-上均部署了一个体验服务，音频部分采用``SenseVoice + Qwen-VL + CosyVoice``实现，可以对``LiteAvatar``和``LAM``两种数字人能力进行切换，欢迎体验。
+Both platforms offer demo services. The audio processing uses ``SenseVoice + Qwen-VL + CosyVoice``, and you can switch between ``LiteAvatar`` and ``LAM`` digital avatar modes. Welcome to try it out!
 
-### 视频
+### Videos
 <table>
   <tr>
     <td align="center">
@@ -138,119 +138,119 @@ HuggingFace
   </tr>
 </table>
 
-## 社区
+## Community
 
-* 微信群
+* WeChat Group
 
 <img alt="community_wechat.png" height="200" src="https://github.com/HumanAIGC-Engineering/OpenAvatarChat/blob/main/assets/images/community_wechat.png" width="200"/>
 
-* 官方视频教程
+* Official Video Tutorials
 
-我们制作了该项目的一系列介绍视频，欢迎在[Bilibili](https://www.bilibili.com/video/BV1sv8QzLEC2)上观看。
-[![点击观看项目演示视频](./assets/images/bilibili_video.jpg)](https://www.bilibili.com/video/BV1sv8QzLEC2)
+We have created a series of introduction videos for this project. Welcome to watch them on [Bilibili](https://www.bilibili.com/video/BV1sv8QzLEC2).
+[![Click to watch project demo video](./assets/images/bilibili_video.jpg)](https://www.bilibili.com/video/BV1sv8QzLEC2)
 
-## 🚨 常见问题
-项目过程中遇到的常见问题，可参考[链接](./docs/FAQ.md)
+## 🚨 FAQ
+For common issues encountered during the project, please refer to [this link](./docs/FAQ.md)
 
-## 📖目录 <!-- omit in toc -->
+## 📖Table of Contents <!-- omit in toc -->
 
-- [🔥核心亮点](#核心亮点)
-- [📢 最新动态](#-最新动态)
-  - [更新日志](#更新日志)
-  - [待办清单](#待办清单)
+- [🔥Core Features](#core-features)
+- [📢 Latest Updates](#-latest-updates)
+  - [Changelog](#changelog)
+  - [To-Do List](#to-do-list)
 - [Demo](#demo)
-  - [在线体验](#在线体验)
-  - [视频](#视频)
-- [社区](#社区)
-- [🚨 常见问题](#-常见问题)
-- [概览](#概览)
-  - [简介](#简介)
-  - [系统需求](#系统需求)
-  - [性能指标](#性能指标)
-  - [组件依赖](#组件依赖)
-  - [预置模式](#预置模式)
-- [🚀安装部署](#安装部署)
-  - [选择配置](#选择配置)
+  - [Online Experience](#online-experience)
+  - [Videos](#videos)
+- [Community](#community)
+- [🚨 FAQ](#-faq)
+- [Overview](#overview)
+  - [Introduction](#introduction)
+  - [System Requirements](#system-requirements)
+  - [Performance Metrics](#performance-metrics)
+  - [Component Dependencies](#component-dependencies)
+  - [Preset Modes](#preset-modes)
+- [🚀Installation and Deployment](#installation-and-deployment)
+  - [Configuration Selection](#configuration-selection)
     - [chat\_with\_lam.yaml](#chat_with_lamyaml)
-      - [使用的Handler](#使用的handler)
+      - [Handlers Used](#handlers-used)
     - [chat\_with\_qwen-omni.yaml](#chat_with_qwen_omniyaml)
     - [chat\_with\_minicpm.yaml](#chat_with_minicpmyaml)
-      - [使用的Handler](#使用的handler-1)
+      - [Handlers Used](#handlers-used-1)
     - [chat\_with\_openai\_compatible.yaml](#chat_with_openai_compatibleyaml)
-     - [使用的Handler](#使用的handler-2)
+     - [Handlers Used](#handlers-used-2)
     - [chat\_with\_openai\_compatible\_edge\_tts.yaml](#chat_with_openai_compatible_edge_ttsyaml)
-     - [使用的Handler](#使用的handler-3)
+     - [Handlers Used](#handlers-used-3)
     - [chat\_with\_openai\_compatible\_bailian\_cosyvoice.yaml](#chat_with_openai_compatible_bailian_cosyvoiceyaml)
-     - [使用的Handler](#使用的handler-4)
+     - [Handlers Used](#handlers-used-4)
     - [chat\_with\_openai\_compatible\_bailian\_cosyvoice\_musetalk.yaml](#chat_with_openai_compatible_bailian_cosyvoice_musetalkyaml)
-     - [使用的Handler](#使用的handler-5)
-  - [本地运行](#本地运行)
-    - [uv安装](#uv安装)
-    - [依赖安装](#依赖安装)
-      - [安装全部依赖](#安装全部依赖)
-      - [仅安装所需模式的依赖](#仅安装所需模式的依赖)
-    - [运行](#运行)
-  - [Docker运行](#docker运行)
-- [Handler依赖安装说明](#handler依赖安装说明)
-  - [服务端渲染 RTC Client Handler](#服务端渲染-rtc-client-handler)
-  - [LAM端侧渲染 Client Handler](#lam端侧渲染-client-handler)
-    - [形象选择](#形象选择)
-  - [OpenAI兼容API的语言模型Handler](#openai兼容api的语言模型handler)
-  - [Qwen-Omni多模态语言模型Handler](#Qwen-Omni多模态语言模型Handler)
-  - [MiniCPM多模态语言模型Handler](#minicpm多模态语言模型handler)
-    - [依赖模型](#依赖模型)
-  - [百炼 CosyVoice Handler](#百炼-cosyvoice-handler)
-  - [CosyVoice本地推理Handler](#cosyvoice本地推理handler)
+     - [Handlers Used](#handlers-used-5)
+  - [Local Execution](#local-execution)
+    - [UV Installation](#uv-installation)
+    - [Dependency Installation](#dependency-installation)
+      - [Install All Dependencies](#install-all-dependencies)
+      - [Install Only Required Dependencies](#install-only-required-dependencies)
+    - [Run](#run)
+  - [Docker Execution](#docker-execution)
+- [Handler Dependency Installation Guide](#handler-dependency-installation-guide)
+  - [Server-side Rendering RTC Client Handler](#server-side-rendering-rtc-client-handler)
+  - [LAM Client-side Rendering Handler](#lam-client-side-rendering-handler)
+    - [Avatar Selection](#avatar-selection)
+  - [OpenAI Compatible API Language Model Handler](#openai-compatible-api-language-model-handler)
+  - [Qwen-Omni Multimodal Language Model Handler](#qwen-omni-multimodal-language-model-handler)
+  - [MiniCPM Multimodal Language Model Handler](#minicpm-multimodal-language-model-handler)
+    - [Required Models](#required-models)
+  - [Bailian CosyVoice Handler](#bailian-cosyvoice-handler)
+  - [CosyVoice Local Inference Handler](#cosyvoice-local-inference-handler)
   - [Edge TTS Handler](#edge-tts-handler)
-  - [LiteAvatar数字人Handler](#liteavatar数字人handler)
-    - [依赖模型](#依赖模型-1)
-    - [配置参数](#配置参数)
-  - [LAM数字人驱动Handler](#lam数字人驱动handler)
-    - [依赖模型](#依赖模型-2)
-  - [MuseTalk数字人Handler](#musetalk数字人handler)
-    - [依赖模型](#依赖模型-3)
-    - [配置参数](#配置参数-1)
-    - [运行](#运行-1)
+  - [LiteAvatar Digital Human Handler](#liteavatar-digital-human-handler)
+    - [Required Models](#required-models-1)
+    - [Configuration Parameters](#configuration-parameters)
+  - [LAM Digital Human Driver Handler](#lam-digital-human-driver-handler)
+    - [Required Models](#required-models-2)
+  - [MuseTalk Digital Human Handler](#musetalk-digital-human-handler)
+    - [Required Models](#required-models-3)
+    - [Configuration Parameters](#configuration-parameters-1)
+    - [Run](#run-1)
   - [Dify Chatflow Handler](#dify-chatflow-handler)
-- [相关部署需求](#相关部署需求)
-  - [准备ssl证书](#准备ssl证书)
+- [Related Deployment Requirements](#related-deployment-requirements)
+  - [Prepare SSL Certificate](#prepare-ssl-certificate)
   - [TURN Server](#turn-server)
-  - [配置说明](#配置说明)
-- [社区贡献-感谢](#社区贡献-感谢)
-- [Star历史](#star历史)
-- [引用](#引用)
+  - [Configuration Guide](#configuration-guide)
+- [Community Contributions - Thanks](#community-contributions---thanks)
+- [Star History](#star-history)
+- [Citation](#citation)
   
   
 
-## 概览
+## Overview
 
-### 简介
+### Introduction
 
-Open Avatar Chat 是一个模块化的交互数字人对话实现，能够在单台PC上运行完整功能。目前支持MiniCPM-o作为多模态语言模型或者使用云端的 api 替换实现常规的ASR + LLM + TTS。这两种模式的结构如下图所示。更多的预置模式详见[下方](#预置模式)。
+Open Avatar Chat is a modular interactive digital avatar dialogue implementation that can run complete functionality on a single PC. It currently supports MiniCPM-o as a multimodal language model or can use cloud APIs to implement the conventional ASR + LLM + TTS pipeline. The architecture of these two modes is shown in the diagram below. For more preset modes, see [below](#preset-modes).
 
 <p align="center">
 <img src="./assets/images/data_flow.svg" />
 </p>
 
-### 系统需求
-* Python版本 >=3.11.7, <3.12
-* 支持CUDA的GPU
-* 未量化的多模态语言模型MiniCPM-o需要20GB以上的显存。
-* 数字人部分可以使用GPU/CPU进行推理，测试设备CPU为i9-13980HX，CPU推理下可以达到30FPS.
+### System Requirements
+* Python version >=3.11.7, <3.12
+* GPU with CUDA support
+* The unquantized multimodal language model MiniCPM-o requires more than 20GB of VRAM.
+* The digital avatar component can use GPU/CPU for inference. Test device CPU is i9-13980HX, achieving 30FPS with CPU inference.
 
 > [!TIP]
 > 
-> 使用int4量化版本的语言模型可以在不到10GB现存的显卡上运行，但可能会因为量化而影响效果。
+> Using the int4 quantized version of the language model can run on GPUs with less than 10GB of VRAM, but may affect performance due to quantization.
 > 
-> 使用云端的 api 替换MiniCPM-o实现常规的ASR + LLM + TTS，可以大大减低配置需求，具体可参考 [ASR + LLM + TTS方式](#chat_with_openai_compatible_bailian_cosyvoiceyaml)
+> Using cloud APIs to replace MiniCPM-o and implement conventional ASR + LLM + TTS can greatly reduce hardware requirements. For details, refer to [ASR + LLM + TTS Method](#chat_with_openai_compatible_bailian_cosyvoiceyaml)
 
 
-### 性能指标
-在我们的测试中，使用配备 i9-13900KF 处理器和 Nvidia RTX 4090 显卡的 PC，我们记录了回答的延迟时间。经过十次测试，平均延迟约为 2.2 秒。延迟时间是从用户语音结束到数字人开始语音的时间间隔，其中包含了 RTC 双向数据传输时间、VAD（语音活动检测）停止延迟以及整个流程的计算时间。
+### Performance Metrics
+In our tests using a PC equipped with an i9-13900KF processor and Nvidia RTX 4090 graphics card, we recorded response latency times. After ten tests, the average latency was approximately 2.2 seconds. The latency is measured from the end of user speech to the beginning of the digital avatar's speech, including RTC bidirectional data transmission time, VAD (Voice Activity Detection) stop delay, and the computational time of the entire pipeline.
 
-### 组件依赖
+### Component Dependencies
 
-| 类型       | 开源项目                                |Github地址|模型地址|
+| Type       | Open Source Project                    |Github Link|Model Link|
 |----------|-------------------------------------|---|---|
 | RTC      | HumanAIGC-Engineering/gradio-webrtc |[<img src="https://img.shields.io/badge/github-white?logo=github&logoColor=black"/>](https://github.com/HumanAIGC-Engineering/gradio-webrtc)||
 | WebUI      | HumanAIGC-Engineering/OpenAvatarChat-WebUI |[<img src="https://img.shields.io/badge/github-white?logo=github&logoColor=black"/>](https://github.com/HumanAIGC-Engineering/OpenAvatarChat-WebUI)||
@@ -265,9 +265,9 @@ Open Avatar Chat 是一个模块化的交互数字人对话实现，能够在单
 |||||
 
 
-### 预置模式
+### Preset Modes
 
-| CONFIG名称                                           | ASR |    LLM    |    TTS    | AVATAR|
+| CONFIG Name                                         | ASR |    LLM    |    TTS    | AVATAR|
 |----------------------------------------------------|-----|:---------:|:---------:|------------|
 | chat_with_lam.yaml                                 |SenseVoice|    API    |API| LAM        |
 | chat_with_qwen_omni.yaml                             |Qwen-Omni| Qwen-Omni | Qwen-Omni | lite-avatar |
@@ -279,25 +279,25 @@ Open Avatar Chat 是一个模块化的交互数字人对话实现，能够在单
 ||||||
 
 
-## 🚀安装部署
+## 🚀Installation and Deployment
 
 > [!IMPORTANT]
-> **【部署前置警告】不看这里，数字人 100% 罢工！**
+> **【Pre-deployment Warning】Skip this and your digital avatar will 100% fail to work!**
 >
-> 在你兴冲冲地开始部署前，请务必停下脚步！
-> 否则，你将大概率遇到：**界面无法访问**、**数字人永远在加载中** 这两大“天坑”。
+> Before you excitedly start deployment, please stop and read this!
+> Otherwise, you will likely encounter two major pitfalls: **Interface cannot be accessed** and **Digital avatar stuck in loading forever**.
 >
-> **想让你的数字人动起来，必须先完成以下检查：**
+> **To make your digital avatar work, you must complete the following checks:**
 >
-> 1.  **确认模块安装**：前往查看你所选模式依赖的**相关模块安装方法**，确保一个都不少。
+> 1.  **Confirm module installation**: Check the **relevant module installation methods** required by your chosen mode to ensure nothing is missing.
 >
-> 2.  **打通网络链路**：这是内外网通信的命脉，**99%的“数字人没反应”问题都出在这里**！请仔细阅读[相关部署需求](#相关部署需求)中的 **SSL 和 TURN 服务** 部分。
+> 2.  **Establish network connectivity**: This is the lifeline for internal/external network communication. **99% of "digital avatar not responding" issues are here!** Please carefully read the **SSL and TURN service** sections in [Related Deployment Requirements](#related-deployment-requirements).
 >
->     **特别是，你的网络环境决定了【必做配置】：**
->     *   **① 仅本机访问 (`localhost`)**
->         > 最简单，通常无需额外配置。但也只能在部署的电脑上自己访问，换个设备（比如手机）就无法访问。
+>     **Especially, your network environment determines the【Required Configuration】:**
+>     *   **① Local access only (`localhost`)**
+>         > Simplest option, usually requires no additional configuration. But can only be accessed on the deployment computer, not from other devices (like phones).
 >
->     *   **② 局域网访问 (如：用手机访问电脑)**
+>     *   **② LAN access (e.g., accessing from phone to computer)**
 >         > **SSL 证书开始变得【必要】**！多数浏览器需要 `https://` 安全连接才能授权摄像头/麦克风。没有它，你的数字人无法听和说。
 >
 >     *   **③ 公网访问 (让任何人都能用)**
@@ -848,17 +848,17 @@ uv run src/demo.py --config <配置文件的绝对路径>.yaml
 > [!IMPORTANT]
 > 所有配置中的路径参数都可以使用绝对路径，或者相对于项目根目录的相对路径。
 
-## 社区贡献-感谢
+## Community Contributions - Thanks
 
 - 感谢社区热心同学“十字鱼”在B站上发布的一键安装包视频，并提供了下载（解压码在视频简介里面有,仔细找找）[一键包](https://www.bilibili.com/video/BV1V1oLYmEu3/?vd_source=29463f5b63a3510553325ba70f325293)
 - 感谢社区热心同学“W&H”提供的夸克一键包[windows版本:提取码a79V](https://pan.quark.cn/s/237177126010) 和 [linux 版本:提取码：E8Kq](https://pan.quark.cn/s/b7fcdc157586)
 - 感谢社区热心同学“W&H”提供的源码zip[夸克网盘:提取码 9iNy](https://pan.quark.cn/s/9e6156cafacd) 和 [百度云盘:提取码：xrxr](https://pan.baidu.com/s/16-0OBtSD5cBz2gJDJORW7w)
 
 
-## Star历史
+## Star History
 ![](https://api.star-history.com/svg?repos=HumanAIGC-Engineering/OpenAvatarChat&type=Date)
 
-## 引用
+## Citation
 
 如果您在您的研究/项目中感到 OpenAvatarChat 为您提供了帮助，期待您能给一个 Star⭐和引用✏️
 
